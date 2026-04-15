@@ -10,7 +10,8 @@ const course = [
 const supabase = createClient(process.env.REACT_APP_SUPABASE_URL || '', process.env.REACT_APP_SUPABASE_ANON_KEY || '');
 
 const GolfApp = () => {
-  const [player] = useState({ name: "MARK KENNEDY", handicap: 14 });
+  // Updated Sample Player
+  const [player] = useState({ name: "ANDREAS DOLAN", handicap: 14 });
   const [verifierName, setVerifierName] = useState("");
   const [currentHole, setCurrentHole] = useState(0);
   const [scores, setScores] = useState(course.map(h => h.par));
@@ -27,12 +28,10 @@ const GolfApp = () => {
     setScores(newScores);
   };
 
-  // NEW LOGIC: Only sum points for holes already visited/played
   const runningTotal = scores.reduce((acc, s, i) => {
     return i <= currentHole ? acc + calcHolePoints(s, course[i].par, course[i].si) : acc;
   }, 0);
 
-  // For the final submission, we use the full 18 holes
   const finalTotal = scores.reduce((acc, s, i) => acc + calcHolePoints(s, course[i].par, course[i].si), 0);
 
   const handleSubmit = async () => {
@@ -68,19 +67,25 @@ const GolfApp = () => {
   return (
     <div style={{ height: '100vh', backgroundColor: '#1A4D3A', color: 'white', padding: '0px', display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'hidden' }}>
       
-      <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', padding: '6px 15px', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+      {/* Header - Player Name & Expanded Handicap */}
+      <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', padding: '4px 15px', backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center' }}>
         <p style={{ fontSize: '44px', fontWeight: '900', margin: 0, lineHeight: 1 }}>{player.name}</p>
-        <p style={{ fontSize: '44px', fontWeight: '900', margin: 0, lineHeight: 1 }}>{player.handicap}</p>
+        <div style={{ textAlign: 'right' }}>
+           <p style={{ fontSize: '18px', fontWeight: '900', margin: 0, color: '#C9A66B', lineHeight: 1 }}>HANDICAP</p>
+           <p style={{ fontSize: '66px', fontWeight: '900', margin: 0, lineHeight: 1 }}>{player.handicap}</p>
+        </div>
       </div>
 
       <div style={{ width: '100%', maxWidth: '420px', backgroundColor: 'white', color: '#333', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden' }}>
         
+        {/* Hole Info Section */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', textAlign: 'center', backgroundColor: '#eee', padding: '2px 0' }}>
           <div><p style={{ fontSize: '20px', fontWeight: '900', margin: 0, color: '#666' }}>HOLE</p><p style={{ fontSize: '85px', fontWeight: '900', lineHeight: 0.8, margin: 0 }}>{currentHole + 1}</p></div>
           <div><p style={{ fontSize: '20px', fontWeight: '900', margin: 0, color: '#666' }}>PAR</p><p style={{ fontSize: '85px', fontWeight: '900', lineHeight: 0.8, margin: 0 }}>{course[currentHole].par}</p></div>
           <div><p style={{ fontSize: '20px', fontWeight: '900', margin: 0, color: '#666' }}>S.I.</p><p style={{ fontSize: '85px', fontWeight: '900', lineHeight: 0.8, margin: 0 }}>{course[currentHole].si}</p></div>
         </div>
 
+        {/* Main Input Section */}
         <div style={{ textAlign: 'center', padding: '5px 0' }}>
           <p style={{ fontSize: '24px', fontWeight: '900', color: '#999', margin: '0 0 5px 0' }}>STROKES TAKEN</p>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around' }}>
@@ -90,18 +95,20 @@ const GolfApp = () => {
           </div>
         </div>
 
+        {/* Points Display */}
         <div style={{ display: 'flex', justifyContent: 'space-around', backgroundColor: '#e8f5e9', padding: '2px 0' }}>
           <div style={{ textAlign: 'center' }}><p style={{ fontSize: '22px', color: '#16a34a', fontWeight: '900', margin: 0 }}>PTS</p><p style={{ fontSize: '85px', fontWeight: '900', lineHeight: 0.8, margin: 0 }}>{calcHolePoints(scores[currentHole], course[currentHole].par, course[currentHole].si)}</p></div>
           <div style={{ borderLeft: '4px solid #c8e6c9' }}></div>
           <div style={{ textAlign: 'center' }}><p style={{ fontSize: '22px', color: '#16a34a', fontWeight: '900', margin: 0 }}>TOTAL</p><p style={{ fontSize: '85px', fontWeight: '900', lineHeight: 0.8, margin: 0 }}>{runningTotal}</p></div>
         </div>
 
-        <div style={{ marginTop: 'auto', display: 'flex', gap: '4px', padding: '2px 4px 15px 4px' }}>
-          <button onClick={() => setCurrentHole(Math.max(0, currentHole - 1))} style={{ flex: 1, padding: '15px 0', backgroundColor: '#666', color: 'white', fontSize: '24px', fontWeight: 'bold', border: 'none', borderRadius: '10px', visibility: currentHole === 0 ? 'hidden' : 'visible' }}>BACK</button>
+        {/* Navigation - 70% height and pulled up by 30px */}
+        <div style={{ marginTop: 'auto', display: 'flex', gap: '4px', padding: '2px 4px 45px 4px' }}>
+          <button onClick={() => setCurrentHole(Math.max(0, currentHole - 1))} style={{ flex: 1, padding: '10px 0', backgroundColor: '#666', color: 'white', fontSize: '24px', fontWeight: 'bold', border: 'none', borderRadius: '10px', visibility: currentHole === 0 ? 'hidden' : 'visible' }}>BACK</button>
           {currentHole < 17 ? (
-            <button onClick={() => setCurrentHole(currentHole + 1)} style={{ flex: 2, padding: '15px 0', backgroundColor: '#C9A66B', color: 'white', fontSize: '32px', fontWeight: '900', border: 'none', borderRadius: '10px' }}>NEXT HOLE</button>
+            <button onClick={() => setCurrentHole(currentHole + 1)} style={{ flex: 2, padding: '10px 0', backgroundColor: '#C9A66B', color: 'white', fontSize: '32px', fontWeight: '900', border: 'none', borderRadius: '10px' }}>NEXT HOLE</button>
           ) : (
-            <button onClick={() => setShowSummary(true)} style={{ flex: 2, padding: '15px 0', backgroundColor: '#2563eb', color: 'white', fontSize: '32px', fontWeight: '900', border: 'none', borderRadius: '10px' }}>REVIEW</button>
+            <button onClick={() => setShowSummary(true)} style={{ flex: 2, padding: '10px 0', backgroundColor: '#2563eb', color: 'white', fontSize: '32px', fontWeight: '900', border: 'none', borderRadius: '10px' }}>REVIEW</button>
           )}
         </div>
       </div>
