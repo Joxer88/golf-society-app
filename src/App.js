@@ -1,26 +1,26 @@
 import React, { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-// 1. COURSE DATA - Defined outside to prevent re-render loops
+// 1. DATA (Safe outside the component)
 const course = [
   { par: 4, si: 7 }, { par: 5, si: 1 }, { par: 3, si: 15 }, { par: 4, si: 9 }, { par: 4, si: 3 }, { par: 4, si: 11 },
   { par: 5, si: 5 }, { par: 3, si: 17 }, { par: 4, si: 13 }, { par: 4, si: 8 }, { par: 4, si: 2 }, { par: 3, si: 16 },
   { par: 5, si: 10 }, { par: 4, si: 4 }, { par: 4, si: 12 }, { par: 4, si: 6 }, { par: 3, si: 18 }, { par: 5, si: 14 }
 ];
 
-// 2. DATABASE CONNECTION
-const supabase = createClient(process.env.REACT_APP_SUPABASE_URL, process.env.REACT_APP_SUPABASE_ANON_KEY);
+// 2. DATABASE (Uses your Vercel Env Variables)
+const supabase = createClient(
+  process.env.REACT_APP_SUPABASE_URL || '', 
+  process.env.REACT_APP_SUPABASE_ANON_KEY || ''
+);
 
 const GolfApp = () => {
-  // CONFIG: Change these per player if needed
-  const [player] = useState({ name: "ANDREAS DOLAN", handicap: 14 });
-  
+  const [player] = useState({ name: "MARK KENNEDY", handicap: 14 });
   const [verifierName, setVerifierName] = useState("");
   const [currentHole, setCurrentHole] = useState(0);
   const [scores, setScores] = useState(course.map(h => h.par));
   const [showSummary, setShowSummary] = useState(false);
 
-  // STABLEFORD CALCULATION
   const calcHolePoints = (s, p, si) => {
     const pops = Math.floor(player.handicap / 18) + (player.handicap % 18 >= si ? 1 : 0);
     return Math.max(0, p - (s - pops) + 2);
@@ -37,34 +37,77 @@ const GolfApp = () => {
   const handleSubmit = async () => {
     if (!verifierName) return alert("Marker must sign!");
     const { error } = await supabase.from('rounds').insert([{ 
-        player_name: player.name, 
-        handicap: player.handicap, 
-        total_points: totalPoints, 
-        verifier: verifierName, 
-        scores: scores 
+        player_name: player.name, handicap: player.handicap, total_points: totalPoints, verifier: verifierName, scores: scores 
     }]);
-    if (!error) { 
-        alert("Round Submitted Successfully!"); 
-        window.location.reload(); 
-    } else { 
-        alert("Error: " + error.message); 
-    }
+    if (!error) { alert("Submitted!"); window.location.reload(); }
   };
 
-  // --- SUMMARY SCREEN (NO SCROLL) ---
   if (showSummary) {
     return (
-      <div className="h-screen bg-[#1A4D3A] text-white p-2 flex flex-col overflow-hidden">
-        <div className="flex-1 bg-white text-gray-900 rounded-3xl p-4 shadow-2xl flex flex-col overflow-hidden">
-          <h1 className="text-lg font-black text-center text-[#1A4D3A] mb-2 uppercase underline">Summary</h1>
-          <div className="flex-1 overflow-y-auto mb-2 border-b-2">
+      <div style={{ height: '100vh', backgroundColor: '#1A4D3A', color: 'white', padding: '10px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ flex: 1, backgroundColor: 'white', color: '#111', borderRadius: '20px', padding: '15px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <h2 style={{ textAlign: 'center', margin: '0 0 10px 0', fontSize: '18px' }}>SUMMARY</h2>
+          <div style={{ flex: 1, overflowY: 'auto', borderBottom: '1px solid #ddd' }}>
             {course.map((h, i) => (
-              <div key={i} className="flex justify-between py-2 border-b text-xl font-black px-2">
-                <span className="text-gray-400 w-10">H{i+1}</span> 
-                <span className="w-10 text-center">{scores[i]}</span>
-                <span className="text-green-700 w-20 text-right">{calcHolePoints(scores[i], h.par, h.si)} pts</span>
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eee', fontWeight: 'bold', fontSize: '18px' }}>
+                <span style={{ color: '#999' }}>H{i+1}</span> <span>{scores[i]}</span>
+                <span style={{ color: '#1A4D3A' }}>{calcHolePoints(scores[i], h.par, h.si)} pts</span>
               </div>
             ))}
           </div>
-          <div className="bg-gray-100 p-2 rounded-xl mb-2 text-center">
-             <p className="
+          <div style={{ textAlign: 'center', padding: '10px 0' }}>
+            <p style={{ fontSize: '12px', margin: 0 }}>TOTAL POINTS</p>
+            <p style={{ fontSize: '40px', fontWeight: '900', margin: 0 }}>{totalPoints}</p>
+          </div>
+          <input type="text" placeholder="MARKER NAME" style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '2px solid #ddd', textAlign: 'center', fontSize: '20px', marginBottom: '10px' }} value={verifierName} onChange={(e)=>setVerifierName(e.target.value)} />
+          <button onClick={handleSubmit} style={{ width: '100%', backgroundColor: '#16a34a', color: 'white', padding: '15px', borderRadius: '10px', fontSize: '20px', fontWeight: 'bold', border: 'none' }}>CONFIRM</button>
+          <button onClick={() => setShowSummary(false)} style={{ width: '100%', color: '#ef4444', background: 'none', border: 'none', marginTop: '10px', fontWeight: 'bold' }}>EDIT SCORES</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ height: '100vh', backgroundColor: '#1A4D3A', color: 'white', padding: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'hidden' }}>
+      <p style={{ color: '#C9A66B', fontWeight: 'bold', margin: '5px 0' }}>EGAN'S GOLF SOCIETY</p>
+      
+      <div style={{ width: '100%', maxWidth: '400px', backgroundColor: 'rgba(255,255,255,0.1)', padding: '10px 15px', borderRadius: '15px', display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+        <div><p style={{ fontSize: '10px', color: '#C9A66B', margin: 0 }}>PLAYER</p><p style={{ fontSize: '18px', fontWeight: '900', margin: 0 }}>{player.name}</p></div>
+        <div style={{ textAlign: 'right' }}><p style={{ fontSize: '10px', color: '#C9A66B', margin: 0 }}>HCP</p><p style={{ fontSize: '24px', fontWeight: '900', margin: 0 }}>{player.handicap}</p></div>
+      </div>
+
+      <div style={{ width: '100%', maxWidth: '350px', backgroundColor: 'white', color: '#333', borderRadius: '30px', padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', marginBottom: '80px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', textAlign: 'center', backgroundColor: '#f9f9f9', padding: '10px', borderRadius: '15px' }}>
+          <div><p style={{ fontSize: '10px', margin: 0 }}>HOLE</p><p style={{ fontSize: '30px', fontWeight: '900', margin: 0 }}>{currentHole + 1}</p></div>
+          <div><p style={{ fontSize: '10px', margin: 0 }}>PAR</p><p style={{ fontSize: '30px', fontWeight: '900', margin: 0 }}>{course[currentHole].par}</p></div>
+          <div><p style={{ fontSize: '10px', margin: 0 }}>S.I.</p><p style={{ fontSize: '30px', fontWeight: '900', margin: 0 }}>{course[currentHole].si}</p></div>
+        </div>
+
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ fontSize: '12px', color: '#ccc', fontWeight: 'bold' }}>STROKES</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around' }}>
+            <button onClick={() => updateScore(-1)} style={{ width: '60px', height: '60px', backgroundColor: '#ef4444', color: 'white', borderRadius: '50%', fontSize: '30px', border: 'none' }}>—</button>
+            <span style={{ fontSize: '100px', fontWeight: '900', color: '#1A4D3A' }}>{scores[currentHole]}</span>
+            <button onClick={() => updateScore(1)} style={{ width: '60px', height: '60px', backgroundColor: '#22c55e', color: 'white', borderRadius: '50%', fontSize: '30px', border: 'none' }}>+</button>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-around', backgroundColor: '#f0fdf4', padding: '10px', borderRadius: '15px', border: '1px solid #dcfce7' }}>
+          <div style={{ textAlign: 'center' }}><p style={{ fontSize: '10px', color: '#16a34a', margin: 0 }}>HOLE PTS</p><p style={{ fontSize: '25px', fontWeight: '900', margin: 0 }}>{calcHolePoints(scores[currentHole], course[currentHole].par, course[currentHole].si)}</p></div>
+          <div style={{ textAlign: 'center' }}><p style={{ fontSize: '10px', color: '#16a34a', margin: 0 }}>TOTAL</p><p style={{ fontSize: '25px', fontWeight: '900', margin: 0 }}>{totalPoints}</p></div>
+        </div>
+      </div>
+
+      <div style={{ position: 'fixed', bottom: '20px', width: '90%', maxWidth: '400px', display: 'flex', gap: '10px' }}>
+        <button onClick={() => setCurrentHole(Math.max(0, currentHole - 1))} style={{ flex: 1, padding: '15px', borderRadius: '12px', backgroundColor: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', visibility: currentHole === 0 ? 'hidden' : 'visible' }}>BACK</button>
+        {currentHole < 17 ? (
+          <button onClick={() => setCurrentHole(currentHole + 1)} style={{ flex: 2, padding: '15px', borderRadius: '12px', backgroundColor: '#C9A66B', color: 'white', fontSize: '18px', fontWeight: 'bold', border: 'none' }}>NEXT HOLE</button>
+        ) : (
+          <button onClick={() => setShowSummary(true)} style={{ flex: 2, padding: '15px', borderRadius: '12px', backgroundColor: '#2563eb', color: 'white', fontSize: '18px', fontWeight: 'bold', border: 'none' }}>REVIEW</button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default GolfApp;
