@@ -10,7 +10,7 @@ const course = [
 const supabase = createClient(process.env.REACT_APP_SUPABASE_URL || '', process.env.REACT_APP_SUPABASE_ANON_KEY || '');
 
 const GolfApp = () => {
-  const [player] = useState({ name: "ANDREAS DOLAN", handicap: 14 });
+  const [player] = useState({ name: "MARK KENNEDY", handicap: 14 });
   const [verifierName, setVerifierName] = useState("");
   const [currentHole, setCurrentHole] = useState(0);
   const [scores, setScores] = useState(course.map(h => h.par));
@@ -62,44 +62,45 @@ const GolfApp = () => {
   return (
     <div style={{ height: '100vh', backgroundColor: '#1A4D3A', color: 'white', padding: '0px', display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'hidden' }}>
       
-      {/* Header - Doubled Text Size */}
-      <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', padding: '4px 12px', backgroundColor: 'rgba(0,0,0,0.3)' }}>
-        <p style={{ fontSize: '22px', fontWeight: '900', margin: 0 }}>{player.name}</p>
-        <p style={{ fontSize: '22px', fontWeight: '900', margin: 0 }}>HCP: {player.handicap}</p>
+      {/* Header - Doubled Size as requested (approx 44px) */}
+      <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', padding: '6px 15px', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+        <p style={{ fontSize: '44px', fontWeight: '900', margin: 0, lineHeight: 1 }}>{player.name}</p>
+        <p style={{ fontSize: '44px', fontWeight: '900', margin: 0, lineHeight: 1 }}>{player.handicap}</p>
       </div>
 
       <div style={{ width: '100%', maxWidth: '420px', backgroundColor: 'white', color: '#333', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden' }}>
         
-        {/* Doubled Hole/Par/SI Stats */}
+        {/* Hole Info Section */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', textAlign: 'center', backgroundColor: '#eee', padding: '2px 0' }}>
-          <div><p style={{ fontSize: '20px', fontWeight: '900', margin: 0, color: '#666' }}>HOLE</p><p style={{ fontSize: '75px', fontWeight: '900', lineHeight: 0.9, margin: 0 }}>{currentHole + 1}</p></div>
-          <div><p style={{ fontSize: '20px', fontWeight: '900', margin: 0, color: '#666' }}>PAR</p><p style={{ fontSize: '75px', fontWeight: '900', lineHeight: 0.9, margin: 0 }}>{course[currentHole].par}</p></div>
-          <div><p style={{ fontSize: '20px', fontWeight: '900', margin: 0, color: '#666' }}>S.I.</p><p style={{ fontSize: '75px', fontWeight: '900', lineHeight: 0.9, margin: 0 }}>{course[currentHole].si}</p></div>
+          <div><p style={{ fontSize: '20px', fontWeight: '900', margin: 0, color: '#666' }}>HOLE</p><p style={{ fontSize: '85px', fontWeight: '900', lineHeight: 0.8, margin: 0 }}>{currentHole + 1}</p></div>
+          <div><p style={{ fontSize: '20px', fontWeight: '900', margin: 0, color: '#666' }}>PAR</p><p style={{ fontSize: '85px', fontWeight: '900', lineHeight: 0.8, margin: 0 }}>{course[currentHole].par}</p></div>
+          <div><p style={{ fontSize: '20px', fontWeight: '900', margin: 0, color: '#666' }}>S.I.</p><p style={{ fontSize: '85px', fontWeight: '900', lineHeight: 0.8, margin: 0 }}>{course[currentHole].si}</p></div>
         </div>
 
-        {/* Jumbo Strokes Section */}
+        {/* Main Input Section */}
         <div style={{ textAlign: 'center', padding: '5px 0' }}>
+          <p style={{ fontSize: '24px', fontWeight: '900', color: '#999', margin: '0 0 5px 0' }}>STROKES TAKEN</p>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around' }}>
-            <button onClick={() => updateScore(-1)} style={{ width: '85px', height: '85px', backgroundColor: '#ef4444', color: 'white', borderRadius: '15px', fontSize: '60px', fontWeight: 'bold', border: 'none' }}>—</button>
-            <span style={{ fontSize: '150px', fontWeight: '900', color: '#1A4D3A', lineHeight: 0.8 }}>{scores[currentHole]}</span>
-            <button onClick={() => updateScore(1)} style={{ width: '85px', height: '85px', backgroundColor: '#22c55e', color: 'white', borderRadius: '15px', fontSize: '60px', fontWeight: 'bold', border: 'none' }}>+</button>
+            <button onClick={() => updateScore(-1)} style={{ width: '90px', height: '90px', backgroundColor: '#ef4444', color: 'white', borderRadius: '15px', fontSize: '70px', fontWeight: 'bold', border: 'none' }}>—</button>
+            <span style={{ fontSize: '180px', fontWeight: '900', color: '#1A4D3A', lineHeight: 0.75 }}>{scores[currentHole]}</span>
+            <button onClick={() => updateScore(1)} style={{ width: '90px', height: '90px', backgroundColor: '#22c55e', color: 'white', borderRadius: '15px', fontSize: '70px', fontWeight: 'bold', border: 'none' }}>+</button>
           </div>
         </div>
 
-        {/* Compressed Points Display */}
+        {/* Points Display - "PTS" label added */}
         <div style={{ display: 'flex', justifyContent: 'space-around', backgroundColor: '#e8f5e9', padding: '2px 0' }}>
-          <div style={{ textAlign: 'center' }}><p style={{ fontSize: '18px', color: '#16a34a', fontWeight: '900', margin: 0 }}>HOLE</p><p style={{ fontSize: '70px', fontWeight: '900', lineHeight: 0.8, margin: 0 }}>{calcHolePoints(scores[currentHole], course[currentHole].par, course[currentHole].si)}</p></div>
-          <div style={{ borderLeft: '3px solid #c8e6c9' }}></div>
-          <div style={{ textAlign: 'center' }}><p style={{ fontSize: '18px', color: '#16a34a', fontWeight: '900', margin: 0 }}>TOTAL</p><p style={{ fontSize: '70px', fontWeight: '900', lineHeight: 0.8, margin: 0 }}>{totalPoints}</p></div>
+          <div style={{ textAlign: 'center' }}><p style={{ fontSize: '22px', color: '#16a34a', fontWeight: '900', margin: 0 }}>PTS</p><p style={{ fontSize: '85px', fontWeight: '900', lineHeight: 0.8, margin: 0 }}>{calcHolePoints(scores[currentHole], course[currentHole].par, course[currentHole].si)}</p></div>
+          <div style={{ borderLeft: '4px solid #c8e6c9' }}></div>
+          <div style={{ textAlign: 'center' }}><p style={{ fontSize: '22px', color: '#16a34a', fontWeight: '900', margin: 0 }}>TOTAL</p><p style={{ fontSize: '85px', fontWeight: '900', lineHeight: 0.8, margin: 0 }}>{totalPoints}</p></div>
         </div>
 
-        {/* Navigation - Higher up and 70% height */}
+        {/* Navigation - Shorter height, lifted slightly */}
         <div style={{ marginTop: 'auto', display: 'flex', gap: '4px', padding: '2px 4px 15px 4px' }}>
-          <button onClick={() => setCurrentHole(Math.max(0, currentHole - 1))} style={{ flex: 1, padding: '18px 0', backgroundColor: '#666', color: 'white', fontSize: '22px', fontWeight: 'bold', border: 'none', borderRadius: '10px', visibility: currentHole === 0 ? 'hidden' : 'visible' }}>BACK</button>
+          <button onClick={() => setCurrentHole(Math.max(0, currentHole - 1))} style={{ flex: 1, padding: '15px 0', backgroundColor: '#666', color: 'white', fontSize: '24px', fontWeight: 'bold', border: 'none', borderRadius: '10px', visibility: currentHole === 0 ? 'hidden' : 'visible' }}>BACK</button>
           {currentHole < 17 ? (
-            <button onClick={() => setCurrentHole(currentHole + 1)} style={{ flex: 2, padding: '18px 0', backgroundColor: '#C9A66B', color: 'white', fontSize: '32px', fontWeight: '900', border: 'none', borderRadius: '10px' }}>NEXT HOLE</button>
+            <button onClick={() => setCurrentHole(currentHole + 1)} style={{ flex: 2, padding: '15px 0', backgroundColor: '#C9A66B', color: 'white', fontSize: '32px', fontWeight: '900', border: 'none', borderRadius: '10px' }}>NEXT HOLE</button>
           ) : (
-            <button onClick={() => setShowSummary(true)} style={{ flex: 2, padding: '18px 0', backgroundColor: '#2563eb', color: 'white', fontSize: '32px', fontWeight: '900', border: 'none', borderRadius: '10px' }}>REVIEW</button>
+            <button onClick={() => setShowSummary(true)} style={{ flex: 2, padding: '15px 0', backgroundColor: '#2563eb', color: 'white', fontSize: '32px', fontWeight: '900', border: 'none', borderRadius: '10px' }}>REVIEW</button>
           )}
         </div>
       </div>
