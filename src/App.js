@@ -2,7 +2,20 @@ import React, { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(process.env.REACT_APP_SUPABASE_URL, process.env.REACT_APP_SUPABASE_ANON_KEY);
+import React, { useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
+// PASTE IT HERE (Approx Line 4 or 5)
+const course = [
+  { par: 4, si: 7 }, { par: 5, si: 1 }, { par: 3, si: 15 }, { par: 4, si: 9 }, { par: 4, si: 3 }, { par: 4, si: 11 },
+  { par: 5, si: 5 }, { par: 3, si: 17 }, { par: 4, si: 13 }, { par: 4, si: 8 }, { par: 4, si: 2 }, { par: 3, si: 16 },
+  { par: 5, si: 10 }, { par: 4, si: 4 }, { par: 4, si: 12 }, { par: 4, si: 6 }, { par: 3, si: 18 }, { par: 5, si: 14 }
+];
+
+const GolfApp = () => {
+  const [player] = useState({ name: "MARK KENNEDY", handicap: 14 });
+  const [scores, setScores] = useState(course.map(hole => hole.par));
+  // ... the rest of the app
 const GolfApp = () => {
   const [player] = useState({ name: "MARK KENNEDY", handicap: 14 });
   const [verifierName, setVerifierName] = useState("");
