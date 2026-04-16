@@ -19,8 +19,8 @@ const courseData = [
 ];
 
 export default function App() {
-  // Load initial state from storage if it exists
   const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('egs_isLoggedIn') === 'true');
+  const [isVerified, setIsVerified] = useState(() => localStorage.getItem('egs_isVerified') === 'true');
   const [player, setPlayer] = useState(() => JSON.parse(localStorage.getItem('egs_player')) || { name: "", handicap: 0 });
   const [currentHole, setCurrentHole] = useState(() => parseInt(localStorage.getItem('egs_currentHole')) || 0);
   const [scores, setScores] = useState(() => JSON.parse(localStorage.getItem('egs_scores')) || courseData.map(h => h.par));
@@ -29,30 +29,18 @@ export default function App() {
   const [showSummary, setShowSummary] = useState(false);
   const [verifierName, setVerifierName] = useState("");
 
-  // Sync state to LocalStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('egs_isLoggedIn', isLoggedIn);
+    localStorage.setItem('egs_isVerified', isVerified);
     localStorage.setItem('egs_player', JSON.stringify(player));
     localStorage.setItem('egs_currentHole', currentHole);
     localStorage.setItem('egs_scores', JSON.stringify(scores));
-  }, [isLoggedIn, player, currentHole, scores]);
-
-  const checkAccessTime = () => {
-    const now = new Date();
-    const compDate = new Date(`${compSettings.date}T${compSettings.firstTeeTime}`);
-    const start = new Date(compDate.getTime() - (60 * 60 * 1000)); 
-    const end = new Date(compDate.getTime() + (12 * 60 * 60 * 1000));
-    return now >= start && now <= end;
-  };
+  }, [isLoggedIn, isVerified, player, currentHole, scores]);
 
   const handleLogin = async () => {
     if (loginCode === compSettings.adminCode) {
       setPlayer({ name: "ADMIN", handicap: 0 });
       setIsLoggedIn(true);
-      return;
-    }
-    if (!checkAccessTime()) {
-      alert("Access denied. Login opens 1hr before tee time.");
       return;
     }
     const { data } = await supabase.from('users').select('*').eq('access_code', loginCode).single();
@@ -82,40 +70,53 @@ export default function App() {
   const handleSubmit = async () => {
     if (!verifierName) return alert("Marker name required");
     await supabase.from('rounds').insert([{ player_name: player.name, handicap: player.handicap, total_points: finalTotal, verifier: verifierName, scores: scores }]);
-    localStorage.clear(); // Clear data once round is submitted
+    localStorage.clear();
     window.location.reload();
   };
 
   const containerStyle = { 
     height: '100vh', width: '100%', maxWidth: '450px', margin: '0 auto', 
     backgroundColor: '#1A4D3A', color: 'white', display: 'flex', 
-    flexDirection: 'column', overflow: 'hidden', boxShadow: '0 0 50px rgba(0,0,0,0.5)' 
+    flexDirection: 'column', overflow: 'hidden'
   };
 
+  // SCREEN 1: LOGIN
   if (!isLoggedIn) {
     return (
       <div style={{ backgroundColor: '#0e2b20', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <div style={containerStyle}>
           <div style={{ padding: '40px 20px', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <h1 style={{ fontSize: '28px', color: '#C9A66B', marginBottom: '10px' }}>EGAN'S GOLF SOCIETY</h1>
-            <h2 style={{ fontSize: '22px', margin: '0' }}>{compSettings.courseName}</h2>
-            <p style={{ fontSize: '18px', color: '#C9A66B', marginBottom: '40px' }}>{compSettings.date}</p>
-            <p style={{ fontSize: '14px', marginBottom: '10px' }}>ENTER YOUR 3-DIGIT CODE</p>
-            <input 
-              type="text" inputMode="numeric" maxLength="3" value={loginCode}
-              onChange={(e) => setLoginCode(e.target.value)}
-              style={{ width: '100%', padding: '20px', fontSize: '40px', textAlign: 'center', borderRadius: '15px', border: 'none', color: '#1A4D3A', fontWeight: '900', marginBottom: '20px' }}
-            />
-            <button 
-              onClick={handleLogin}
-              style={{ width: '100%', padding: '20px', backgroundColor: '#C9A66B', color: 'white', fontSize: '24px', fontWeight: '900', border: 'none', borderRadius: '15px' }}
-            >SIGN IN</button>
+            <h1 style={{ fontSize: '28px', color: '#C9A66B' }}>EGAN'S GOLF SOCIETY</h1>
+            <p style={{ fontSize: '14px', marginBottom: '10px' }}>ENTER 3-DIGIT CODE</p>
+            <input type="text" inputMode="numeric" maxLength="3" value={loginCode} onChange={(e) => setLoginCode(e.target.value)}
+              style={{ width: '100%', padding: '20px', fontSize: '40px', textAlign: 'center', borderRadius: '15px', border: 'none', color: '#1A4D3A', fontWeight: '900', marginBottom: '20px' }} />
+            <button onClick={handleLogin} style={{ width: '100%', padding: '20px', backgroundColor: '#C9A66B', color: 'white', fontSize: '24px', fontWeight: '900', border: 'none', borderRadius: '15px' }}>ENTER</button>
           </div>
         </div>
       </div>
     );
   }
 
+  // SCREEN 2: VERIFICATION
+  if (isLoggedIn && !isVerified) {
+    return (
+        <div style={{ backgroundColor: '#0e2b20', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div style={containerStyle}>
+            <div style={{ padding: '40px 20px', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <p style={{ color: '#C9A66B', fontSize: '18px' }}>WELCOME</p>
+              <h1 style={{ fontSize: '42px', fontWeight: '900', margin: '10px 0' }}>{player.name}</h1>
+              <p style={{ fontSize: '22px', marginBottom: '40px' }}>Handicap: <b>{player.handicap}</b></p>
+              
+              <button onClick={() => setIsVerified(true)} style={{ width: '100%', padding: '20px', backgroundColor: '#22c55e', color: 'white', fontSize: '24px', fontWeight: '900', border: 'none', borderRadius: '15px', marginBottom: '15px' }}>YES, THAT'S ME</button>
+              
+              <button onClick={() => { setIsLoggedIn(false); localStorage.clear(); }} style={{ width: '100%', padding: '15px', backgroundColor: 'transparent', color: '#ef4444', fontSize: '18px', fontWeight: 'bold', border: '2px solid #ef4444', borderRadius: '15px' }}>NO, WRONG NAME</button>
+            </div>
+          </div>
+        </div>
+      );
+  }
+
+  // SCREEN 3: SUMMARY
   if (showSummary) {
     return (
       <div style={{ backgroundColor: '#0e2b20', minHeight: '100vh' }}>
@@ -142,6 +143,7 @@ export default function App() {
     );
   }
 
+  // SCREEN 4: SCORING
   return (
     <div style={{ backgroundColor: '#0e2b20', minHeight: '100vh' }}>
       <div style={containerStyle}>
