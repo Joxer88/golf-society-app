@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const sbUrl = process.env.REACT_APP_SUPABASE_URL || '';
 const sbKey = process.env.REACT_APP_SUPABASE_ANON_KEY || '';
 const supabase = createClient(sbUrl, sbKey);
 
-// --- ADMIN SETTINGS ---
 const compSettings = {
   courseName: "CO. LONGFORD GOLF CLUB",
   date: "2026-04-16", 
@@ -20,13 +19,23 @@ const courseData = [
 ];
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // Load initial state from storage if it exists
+  const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('egs_isLoggedIn') === 'true');
+  const [player, setPlayer] = useState(() => JSON.parse(localStorage.getItem('egs_player')) || { name: "", handicap: 0 });
+  const [currentHole, setCurrentHole] = useState(() => parseInt(localStorage.getItem('egs_currentHole')) || 0);
+  const [scores, setScores] = useState(() => JSON.parse(localStorage.getItem('egs_scores')) || courseData.map(h => h.par));
+  
   const [loginCode, setLoginCode] = useState("");
-  const [player, setPlayer] = useState({ name: "", handicap: 0 });
-  const [currentHole, setCurrentHole] = useState(0);
-  const [scores, setScores] = useState(courseData.map(h => h.par));
   const [showSummary, setShowSummary] = useState(false);
   const [verifierName, setVerifierName] = useState("");
+
+  // Sync state to LocalStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('egs_isLoggedIn', isLoggedIn);
+    localStorage.setItem('egs_player', JSON.stringify(player));
+    localStorage.setItem('egs_currentHole', currentHole);
+    localStorage.setItem('egs_scores', JSON.stringify(scores));
+  }, [isLoggedIn, player, currentHole, scores]);
 
   const checkAccessTime = () => {
     const now = new Date();
@@ -73,6 +82,7 @@ export default function App() {
   const handleSubmit = async () => {
     if (!verifierName) return alert("Marker name required");
     await supabase.from('rounds').insert([{ player_name: player.name, handicap: player.handicap, total_points: finalTotal, verifier: verifierName, scores: scores }]);
+    localStorage.clear(); // Clear data once round is submitted
     window.location.reload();
   };
 
