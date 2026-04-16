@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(process.env.REACT_APP_SUPABASE_URL || '', process.env.REACT_APP_SUPABASE_ANON_KEY || '');
+const supabase = createClient(
+  process.env.REACT_APP_SUPABASE_URL || '', 
+  process.env.REACT_APP_SUPABASE_ANON_KEY || ''
+);
 
 // --- ADMIN SETTINGS ---
 const compSettings = {
   courseName: "CO. LONGFORD GOLF CLUB",
-  date: "2026-04-16", // ISO Format YYYY-MM-DD
-  firstTeeTime: "10:00", // 24hr format
-  adminCode: "999"      // Master override
+  date: "2026-04-16", 
+  firstTeeTime: "10:00",
+  adminCode: "999"
 };
 
 const course = [
@@ -21,8 +24,6 @@ const GolfApp = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginCode, setLoginCode] = useState("");
   const [player, setPlayer] = useState({ name: "", handicap: 0 });
-  
-  // Scoring State
   const [currentHole, setCurrentHole] = useState(0);
   const [scores, setScores] = useState(course.map(h => h.par));
   const [showSummary, setShowSummary] = useState(false);
@@ -31,29 +32,23 @@ const GolfApp = () => {
   const checkAccessTime = () => {
     const now = new Date();
     const compDate = new Date(`${compSettings.date}T${compSettings.firstTeeTime}`);
-    
-    // Window: 1 hour before first tee to 10 hours after (Adjusted from 5hr post-last-tee for safety)
     const startTime = new Date(compDate.getTime() - (60 * 60 * 1000)); 
     const endTime = new Date(compDate.getTime() + (10 * 60 * 60 * 1000));
-
     return now >= startTime && now <= endTime;
   };
 
   const handleLogin = async () => {
-    // 1. Admin Override
     if (loginCode === compSettings.adminCode) {
       setPlayer({ name: "ADMIN", handicap: 0 });
       setIsLoggedIn(true);
       return;
     }
 
-    // 2. Check Time Constraint for regular users
     if (!checkAccessTime()) {
         alert("Access denied. Login is only available on the day of competition.");
         return;
     }
 
-    // 3. Verify 3-Digit Code in Supabase
     const { data, error } = await supabase
       .from('users')
       .select('name, handicap')
@@ -68,28 +63,36 @@ const GolfApp = () => {
     }
   };
 
-  // Logic Helpers
   const calcHolePoints = (s, p, si) => {
     if (s === 0) return 0;
     const pops = Math.floor(player.handicap / 18) + (player.handicap % 18 >= si ? 1 : 0);
     return Math.max(0, p - (s - pops) + 2);
   };
+
   const updateScore = (val) => {
     const newScores = [...scores];
     newScores[currentHole] = Math.max(0, newScores[currentHole] + val);
     setScores(newScores);
   };
+
   const pickUp = () => {
     const newScores = [...scores];
     newScores[currentHole] = 0;
     setScores(newScores);
   };
+
   const runningTotal = scores.reduce((acc, s, i) => i <= currentHole ? acc + calcHolePoints(s, course[i].par, course[i].si) : acc, 0);
   const finalTotal = scores.reduce((acc, s, i) => acc + calcHolePoints(s, course[i].par, course[i].si), 0);
 
   const handleSubmit = async () => {
     if (!verifierName) return alert("Marker must sign!");
-    await supabase.from('rounds').insert([{ player_name: player.name, handicap: player.handicap, total_points: finalTotal, verifier: verifierName, scores: scores }]);
+    await supabase.from('rounds').insert([{ 
+      player_name: player.name, 
+      handicap: player.handicap, 
+      total_points: finalTotal, 
+      verifier: verifierName, 
+      scores: scores 
+    }]);
     window.location.reload();
   };
 
@@ -97,7 +100,6 @@ const GolfApp = () => {
     height: '100vh', width: '100%', maxWidth: '450px', margin: '0 auto', backgroundColor: '#1A4D3A', color: 'white', display: 'flex', flexDirection: 'column', overflow: 'hidden'
   };
 
-  // --- LOGIN SCREEN ---
   if (!isLoggedIn) {
     return (
       <div style={{ backgroundColor: '#0e2b20', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -106,29 +108,22 @@ const GolfApp = () => {
             <h1 style={{ fontSize: '28px', color: '#C9A66B', marginBottom: '10px' }}>EGAN'S GOLF SOCIETY</h1>
             <h2 style={{ fontSize: '22px', margin: '0' }}>{compSettings.courseName}</h2>
             <p style={{ fontSize: '18px', color: '#C9A66B', marginBottom: '40px' }}>{compSettings.date}</p>
-            
             <p style={{ fontSize: '14px', marginBottom: '10px' }}>ENTER YOUR 3-DIGIT CODE</p>
             <input 
-              type="password" 
-              inputMode="numeric"
-              maxLength="3"
-              value={loginCode}
+              type="password" inputMode="numeric" maxLength="3" value={loginCode}
               onChange={(e) => setLoginCode(e.target.value)}
               style={{ width: '100%', padding: '20px', fontSize: '40px', textAlign: 'center', borderRadius: '15px', border: 'none', color: '#1A4D3A', fontWeight: '900', marginBottom: '20px' }}
             />
             <button 
               onClick={handleLogin}
               style={{ width: '100%', padding: '20px', backgroundColor: '#C9A66B', color: 'white', fontSize: '24px', fontWeight: '900', border: 'none', borderRadius: '15px' }}
-            >
-              SIGN IN
-            </button>
+            >SIGN IN</button>
           </div>
         </div>
       </div>
     );
   }
 
-  // --- SCORECARD SCREENS (Existing Logic) ---
   if (showSummary) {
     return (
       <div style={{ backgroundColor: '#0e2b20', minHeight: '100vh' }}>
