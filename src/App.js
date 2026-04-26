@@ -19,6 +19,7 @@ export default function App() {
   const [loginCode, setLoginCode] = useState("");
   const [allPlayers, setAllPlayers] = useState([]);
   const [verifierName, setVerifierName] = useState("");
+  const [deduction, setDeduction] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
 
   const handleLogout = useCallback(() => { localStorage.clear(); window.location.reload(); }, []);
@@ -50,7 +51,7 @@ export default function App() {
 
   const f9Points = scores.slice(0, 9).reduce((acc, s, i) => acc + calcPoints(s, courseData[i].par, courseData[i].si), 0);
   const b9Points = scores.slice(9, 18).reduce((acc, s, i) => acc + calcPoints(s, courseData[i + 9].par, courseData[i + 9].si), 0);
-  const totalPoints = f9Points + b9Points;
+  const finalScore = (f9Points + b9Points) - deduction;
 
   const handleSubmitScore = async () => {
     if (!verifierName) return alert("Please select an Attester.");
@@ -58,7 +59,7 @@ export default function App() {
       player_name: player.name,
       handicap: player.handicap,
       scores: scores,
-      total_points: totalPoints,
+      total_points: finalScore,
       verifier: verifierName,
       date: new Date().toISOString()
     }]);
@@ -80,7 +81,7 @@ export default function App() {
     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '18px' }}>
       <thead>
         <tr style={{ borderBottom: '2px solid #063020', background: '#f1f3f5' }}>
-          <th style={{ padding: '4px' }}>H</th><th style={{ padding: '4px' }}>S</th><th style={{ padding: '4px' }}>P</th>
+          <th style={{ padding: '2px' }}>H</th><th style={{ padding: '2px' }}>S</th><th style={{ padding: '2px' }}>P</th>
         </tr>
       </thead>
       <tbody>
@@ -88,9 +89,9 @@ export default function App() {
           const idx = startIndex + i;
           return (
             <tr key={idx} style={{ borderBottom: '1px solid #ddd' }}>
-              <td style={{ fontWeight: '800', padding: '6px 0', background: '#f8f9fa', fontSize: '16px' }}>{idx + 1}</td>
-              <td style={{ fontWeight: '900', fontSize: '22px' }}>{scores[idx] === 0 ? 'X' : scores[idx]}</td>
-              <td style={{ fontWeight: '900', color: '#10b981', fontSize: '22px' }}>{calcPoints(scores[idx], h.par, h.si)}</td>
+              <td style={{ fontWeight: '800', padding: '3px 0', background: '#f8f9fa', fontSize: '15px' }}>{idx + 1}</td>
+              <td style={{ fontWeight: '900', fontSize: '20px' }}>{scores[idx] === 0 ? 'X' : scores[idx]}</td>
+              <td style={{ fontWeight: '900', color: '#10b981', fontSize: '20px' }}>{calcPoints(scores[idx], h.par, h.si)}</td>
             </tr>
           );
         })}
@@ -102,7 +103,6 @@ export default function App() {
     <div style={{ backgroundColor: '#ffffff', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'sans-serif' }}>
       {!showSummary ? (
         <div style={{ width: '100%', maxWidth: '450px', margin: '0 auto', display: 'flex', flexDirection: 'column', height: '100%' }}>
-          
           <div style={{ padding: '10px 5px', backgroundColor: '#063020', color: 'white', textAlign: 'center' }}>
             <div style={{ fontSize: '34px', fontWeight: '900', lineHeight: '1.1' }}>{player.name.toUpperCase()}</div>
             <div style={{ fontSize: '24px', fontWeight: '800', color: '#C9A66B' }}>HCAP: {player.handicap}</div>
@@ -131,7 +131,7 @@ export default function App() {
                     <div style={{ fontWeight: '900', color: '#495057', fontSize: '18px' }}>STROKES</div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                    <button onClick={() => { const n = [...scores]; n[currentHole] = 0; setScores(n); }} style={{ width: '85px', height: '52px', borderRadius: '15px', backgroundColor: '#495057', color: 'white', border: 'none', fontSize: '36px', fontWeight: '900' }}>PU</button>
+                    <button onClick={() => { const n = [...scores]; n[currentHole] = 0; setScores(n); }} style={{ width: '85px', height: '52px', borderRadius: '15px', backgroundColor: '#495057', color: 'white', border: 'none', fontSize: '32px', fontWeight: '900' }}>PU</button>
                     <button onClick={() => { const n = [...scores]; if(n[currentHole] === 0) n[currentHole] = courseData[currentHole].par; else n[currentHole]++; setScores(n); }} style={{ width: '85px', height: '110px', borderRadius: '20px', backgroundColor: '#2a9d8f', color: 'white', border: 'none', fontSize: '65px', fontWeight: '900' }}>+</button>
                 </div>
              </div>
@@ -145,47 +145,50 @@ export default function App() {
                 </div>
                 <div style={{ flex: 1, textAlign: 'center', padding: '5px', backgroundColor: '#d1fae5', borderRadius: '12px', border: '2px solid #10b981' }}>
                     <div style={{ fontWeight: '900', fontSize: '16px' }}>TOTAL</div>
-                    <div style={{ fontSize: '48px', fontWeight: '900', lineHeight: '1', color: '#064e3b' }}>{totalPoints}</div>
+                    <div style={{ fontSize: '48px', fontWeight: '900', lineHeight: '1', color: '#064e3b' }}>{f9Points + b9Points}</div>
                 </div>
             </div>
             <div style={{ display: 'flex', gap: '8px', paddingBottom: '8px' }}>
                 <button onClick={() => currentHole > 0 && setCurrentHole(currentHole - 1)} style={{ flex: 1, padding: '18px', borderRadius: '15px', background: '#E9ECEF', border: 'none', fontWeight: '900', color: '#495057', fontSize: '20px' }}>PREV</button>
-                <button onClick={() => currentHole < 17 ? setCurrentHole(currentHole+1) : setShowSummary(true)} style={{ flex: 2, padding: '18px', borderRadius: '15px', background: '#063020', color: 'white', border: 'none', fontWeight: '900', fontSize: '22px' }}>NEXT</button>
+                <button onClick={() => currentHole < 17 ? setCurrentHole(currentHole+1) : setShowSummary(true)} style={{ flex: 2, padding: '18px', borderRadius: '15px', background: '#063020', color: 'white', border: 'none', fontWeight: '900', fontSize: '22px' }}>SUMMARY</button>
             </div>
           </div>
         </div>
       ) : (
-        <div style={{ flex: 1, overflowY: 'auto', backgroundColor: '#ffffff', padding: '5px' }}>
-          <div style={{ textAlign: 'center', padding: '10px 0', borderBottom: '2px solid #eee' }}>
-             <h2 style={{ fontSize: '22px', fontWeight: '900', margin: '0' }}>SCORECARD</h2>
-             <div style={{ fontSize: '38px', fontWeight: '900', color: '#10b981' }}>{totalPoints} TOTAL</div>
-          </div>
-
-          {/* SPLIT SCREEN TABLE */}
-          <div style={{ display: 'flex', gap: '5px', marginTop: '10px' }}>
-              <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
-                  <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '800', padding: '4px' }}>FRONT 9</div>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', padding: '2px' }}>
+          
+          <div style={{ display: 'flex', gap: '2px' }}>
+              <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '4px' }}>
+                  <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '14px', padding: '2px' }}>FRONT 9: {f9Points}</div>
                   <ScoreTable startIndex={0} />
-                  <div style={{ padding: '10px', background: '#d1fae5', textAlign: 'center', fontWeight: '900', fontSize: '20px' }}>F9: {f9Points}</div>
               </div>
-              <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
-                  <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '800', padding: '4px' }}>BACK 9</div>
+              <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '4px' }}>
+                  <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '14px', padding: '2px' }}>BACK 9: {b9Points}</div>
                   <ScoreTable startIndex={9} />
-                  <div style={{ padding: '10px', background: '#d1fae5', textAlign: 'center', fontWeight: '900', fontSize: '20px' }}>B9: {b9Points}</div>
               </div>
           </div>
 
-          <div style={{ marginTop: '15px', padding: '10px', background: '#f8f9fa', borderRadius: '12px' }}>
-            <label style={{ display: 'block', fontWeight: '900', marginBottom: '5px' }}>ATTESTER:</label>
-            <select value={verifierName} onChange={(e) => setVerifierName(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', fontSize: '18px', border: '2px solid #063020' }}>
-              <option value="">-- SELECT --</option>
-              {allPlayers.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
-            </select>
+          <div style={{ display: 'flex', gap: '5px', padding: '5px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '12px', fontWeight: '900' }}>ATTESTER</label>
+                <select value={verifierName} onChange={(e) => setVerifierName(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', fontSize: '16px', border: '2px solid #063020' }}>
+                  <option value="">-- SELECT --</option>
+                  {allPlayers.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+                </select>
+              </div>
+              <div style={{ width: '100px' }}>
+                <label style={{ fontSize: '12px', fontWeight: '900' }}>DEDUCT</label>
+                <input type="number" value={deduction} onChange={(e) => setDeduction(parseInt(e.target.value) || 0)} style={{ width: '100%', padding: '10px', borderRadius: '8px', fontSize: '16px', border: '2px solid #e63946', textAlign: 'center' }} />
+              </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', marginTop: '15px', paddingBottom: '30px' }}>
-            <button onClick={() => setShowSummary(false)} style={{ flex: 1, padding: '20px', borderRadius: '12px', border: 'none', background: '#E9ECEF', fontWeight: '900' }}>BACK</button>
-            <button onClick={handleSubmitScore} style={{ flex: 2, padding: '20px', borderRadius: '12px', border: 'none', background: '#10b981', color: 'white', fontWeight: '900', fontSize: '20px' }}>SUBMIT</button>
+          <div style={{ textAlign: 'center', background: '#d1fae5', padding: '5px', borderY: '1px solid #10b981' }}>
+             <span style={{ fontSize: '32px', fontWeight: '900', color: '#064e3b' }}>FINAL: {finalScore} PTS</span>
+          </div>
+
+          <div style={{ display: 'flex', gap: '5px', padding: '5px' }}>
+            <button onClick={() => setShowSummary(false)} style={{ flex: 1, padding: '15px', borderRadius: '10px', border: 'none', background: '#E9ECEF', fontWeight: '900' }}>EDIT</button>
+            <button onClick={handleSubmitScore} style={{ flex: 2, padding: '15px', borderRadius: '10px', border: 'none', background: '#10b981', color: 'white', fontWeight: '900', fontSize: '18px' }}>SUBMIT CARD</button>
           </div>
         </div>
       )}
