@@ -22,7 +22,7 @@ export default function App() {
   const [verifierName, setVerifierName] = useState("");
   const [showSummary, setShowSummary] = useState(false);
   const [adminTab, setAdminTab] = useState('codes');
-  const [isLocked, setIsLocked] = useState(false); // NEW: Track if score is already submitted
+  const [isLocked, setIsLocked] = useState(false);
 
   const handleLogout = useCallback(() => { localStorage.clear(); window.location.reload(); }, []);
 
@@ -32,7 +32,6 @@ export default function App() {
     setAllPlayers(u || []);
     setRounds(r || []);
 
-    // Check if current player already has a submitted round
     if (player.name) {
       const existingRound = r?.find(round => round.player_name === player.name);
       if (existingRound) {
@@ -52,11 +51,16 @@ export default function App() {
   }, [isLoggedIn, player, currentHole, scores, loadData]);
 
   const handleLogin = async () => {
-    const { data } = await supabase.from('users').select('*').eq('access_code', loginCode).single();
+    // Sanitizing code input (handling both numbers and text)
+    const formattedCode = loginCode.trim();
+    const { data } = await supabase.from('users').select('*').eq('access_code', formattedCode).single();
+    
     if (data) { 
       setPlayer({ ...data, isAdmin: data.show_leaderboard === true }); 
       setIsLoggedIn(true); 
-    } else { alert("Login failed."); }
+    } else { 
+      alert("Invalid Access Code."); 
+    }
   };
 
   const deleteRound = async (id) => {
@@ -99,7 +103,7 @@ export default function App() {
           const idx = startIndex + i;
           return (
             <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
-              <td style={{ fontWeight: '800', padding: '4px 0', background: '#f8f9fa', fontSize: '12px', width: '20%' }}>{idx + 1}</td>
+              <td style={{ fontWeight: '800', padding: '4px 0', background: '#f8f9fa', fontSize: '11px', width: '20%' }}>{idx + 1}</td>
               <td style={{ fontWeight: '900', fontSize: '18px', width: '40%' }}>{scores[idx] === 0 ? 'X' : scores[idx]}</td>
               <td style={{ fontWeight: '900', color: '#10b981', fontSize: '18px', width: '40%' }}>{calcPoints(scores[idx], h.par, h.si, player.handicap)}</td>
             </tr>
@@ -112,7 +116,13 @@ export default function App() {
   if (!isLoggedIn) return (
     <div style={{ backgroundColor: '#063020', height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '30px' }}>
       <h1 style={{ color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '45px' }}>LOGIN</h1>
-      <input type="text" value={loginCode} onChange={e => setLoginCode(e.target.value)} placeholder="000" style={{ padding: '20px', fontSize: '30px', textAlign: 'center', borderRadius: '15px', marginBottom: '15px', border: 'none' }} />
+      <input 
+        type="text" 
+        value={loginCode} 
+        onChange={e => setLoginCode(e.target.value)} 
+        placeholder="Enter Code" 
+        style={{ padding: '20px', fontSize: '24px', textAlign: 'center', borderRadius: '15px', marginBottom: '15px', border: 'none', textTransform: 'uppercase' }} 
+      />
       <button onClick={handleLogin} style={{ padding: '20px', backgroundColor: '#C9A66B', color: 'white', border: 'none', borderRadius: '15px', fontWeight: '900', fontSize: '24px' }}>ENTER</button>
     </div>
   );
@@ -124,7 +134,7 @@ export default function App() {
         <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' }}>
           <button onClick={() => setAdminTab('codes')} style={{ padding: '10px', background: adminTab === 'codes' ? '#C9A66B' : 'white', color: adminTab === 'codes' ? 'white' : 'black', border: 'none', borderRadius: '5px' }}>CODES</button>
           <button onClick={() => setAdminTab('leaderboard')} style={{ padding: '10px', background: adminTab === 'leaderboard' ? '#C9A66B' : 'white', color: adminTab === 'leaderboard' ? 'white' : 'black', border: 'none', borderRadius: '5px' }}>RESULTS</button>
-          <button onClick={handleLogout} style={{ padding: '10px', background: '#e63946', color: 'white', border: 'none', borderRadius: '5px' }}>OUT</button>
+          <button onClick={handleLogout} style={{ padding: '10px', background: '#e63946', color: 'white', border: 'none', borderRadius: '5px' }}>LOGOUT</button>
         </div>
       </div>
       <div style={{ padding: '15px' }}>
@@ -142,7 +152,7 @@ export default function App() {
                   <b>{r.player_name}</b> — {r.total_points} pts <br/>
                   <small>F9: {r.f9} | B9: {r.b9}</small>
                </div>
-               <button onClick={() => deleteRound(r.id)} style={{ background: '#e63946', color: 'white', border: 'none', padding: '8px', borderRadius: '5px', fontSize: '11px' }}>UNLOCK/EDIT</button>
+               <button onClick={() => deleteRound(r.id)} style={{ background: '#e63946', color: 'white', border: 'none', padding: '8px', borderRadius: '5px', fontSize: '11px' }}>UNLOCK</button>
              </div>
           ))
         )}
@@ -160,17 +170,14 @@ export default function App() {
             <div style={{ fontSize: '18px', fontWeight: '800', color: '#C9A66B' }}>HCAP: {player.handicap} | DEDUCT: {player.deduction || 0}</div>
           </div>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-              <div style={{ fontSize: '22px', fontWeight: '900', marginBottom: '10px' }}>HOLE {currentHole + 1} (PAR {courseData[currentHole].par})</div>
-              <div style={{ fontSize: '140px', fontWeight: '900', color: '#063020', lineHeight: '0.8' }}>{scores[currentHole] === 0 ? "X" : scores[currentHole]}</div>
+              <div style={{ fontSize: '20px', fontWeight: '900', marginBottom: '10px' }}>HOLE {currentHole + 1} (PAR {courseData[currentHole].par})</div>
+              <div style={{ fontSize: '120px', fontWeight: '900', color: '#063020', lineHeight: '0.8' }}>{scores[currentHole] === 0 ? "X" : scores[currentHole]}</div>
               
               {!isLocked && (
-                <>
-                  <div style={{ display: 'flex', gap: '25px', marginTop: '30px' }}>
-                    <button onClick={() => { if(scores[currentHole] > 1){const n=[...scores]; n[currentHole]--; setScores(n);}}} style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#e63946', color: 'white', border: 'none', fontSize: '45px', fontWeight: '900' }}>-</button>
-                    <button onClick={() => { const n = [...scores]; if(n[currentHole] === 0) n[currentHole] = courseData[currentHole].par; else n[currentHole]++; setScores(n); }} style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#2a9d8f', color: 'white', border: 'none', fontSize: '45px', fontWeight: '900' }}>+</button>
-                  </div>
-                  <button onClick={() => { const n = [...scores]; n[currentHole] = 0; setScores(n); }} style={{ marginTop: '25px', padding: '10px 30px', borderRadius: '12px', background: '#495057', color: 'white', border: 'none', fontWeight: '900' }}>PICK UP (X)</button>
-                </>
+                <div style={{ display: 'flex', gap: '25px', marginTop: '30px' }}>
+                  <button onClick={() => { if(scores[currentHole] > 1){const n=[...scores]; n[currentHole]--; setScores(n);}}} style={{ width: '75px', height: '75px', borderRadius: '50%', backgroundColor: '#e63946', color: 'white', border: 'none', fontSize: '40px', fontWeight: '900' }}>-</button>
+                  <button onClick={() => { const n = [...scores]; if(n[currentHole] === 0) n[currentHole] = courseData[currentHole].par; else n[currentHole]++; setScores(n); }} style={{ width: '75px', height: '75px', borderRadius: '50%', backgroundColor: '#2a9d8f', color: 'white', border: 'none', fontSize: '40px', fontWeight: '900' }}>+</button>
+                </div>
               )}
           </div>
           <div style={{ display: 'flex', padding: '15px', gap: '10px', background: '#063020' }}>
