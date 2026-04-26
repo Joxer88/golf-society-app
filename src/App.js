@@ -20,15 +20,27 @@ export default function App() {
   const [allPlayers, setAllPlayers] = useState([]);
   const [verifierName, setVerifierName] = useState("");
   const [showSummary, setShowSummary] = useState(false);
+  const [view, setView] = useState('scorecard');
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [isLeaderboardPublic, setIsLeaderboardPublic] = useState(false);
 
   const handleLogout = useCallback(() => { localStorage.clear(); window.location.reload(); }, []);
 
   const loadSocietyData = useCallback(async () => {
     try {
-      const { data: users } = await supabase.from('users').select('name').neq('name', player.name);
-      setAllPlayers(users || []);
+      // Check if ANY admin has show_leaderboard set to true
+      const { data: users } = await supabase.from('users').select('name, show_leaderboard');
+      setAllPlayers(users?.filter(u => u.name !== player.name) || []);
+      const isPublic = users?.some(u => u.show_leaderboard === true);
+      setIsLeaderboardPublic(!!isPublic);
     } catch (e) { console.error(e); }
   }, [player.name]);
+
+  const loadLeaderboard = async () => {
+    const { data } = await supabase.from('rounds').select('*').order('total_points', { ascending: false });
+    setLeaderboardData(data || []);
+    setView('leaderboard');
+  };
 
   useEffect(() => {
     localStorage.setItem('egs_isLoggedIn', isLoggedIn);
@@ -93,6 +105,31 @@ export default function App() {
         <h1 style={{ color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '45px' }}>LOGIN</h1>
         <input type="text" value={loginCode} onChange={e => setLoginCode(e.target.value)} placeholder="000" style={{ padding: '20px', fontSize: '30px', textAlign: 'center', borderRadius: '15px', marginBottom: '15px', border: 'none' }} />
         <button onClick={handleLogin} style={{ padding: '20px', backgroundColor: '#C9A66B', color: 'white', border: 'none', borderRadius: '15px', fontWeight: '900', fontSize: '24px' }}>ENTER</button>
+      </div>
+    );
+  }
+
+  if (view === 'leaderboard') {
+    return (
+      <div style={{ backgroundColor: '#ffffff', height: '100vh', padding: '10px', overflowY: 'auto', fontFamily: 'sans-serif' }}>
+        <h2 style={{ textAlign: 'center', fontWeight: '900', color: '#063020', fontSize: '28px' }}>LIVE RESULTS</h2>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+            <thead>
+                <tr style={{ background: '#063020', color: 'white' }}>
+                    <th style={{ padding: '12px', textAlign: 'left' }}>PLAYER</th>
+                    <th style={{ padding: '12px' }}>PTS</th>
+                </tr>
+            </thead>
+            <tbody>
+                {leaderboardData.map((r, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid #ddd', background: r.player_name === player.name ? '#fff9db' : 'transparent' }}>
+                        <td style={{ padding: '15px', fontWeight: '700', fontSize: '16px' }}>{r.player_name}</td>
+                        <td style={{ padding: '15px', textAlign: 'center', fontWeight: '900', color: '#10b981', fontSize: '20px' }}>{r.total_points}</td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+        <button onClick={() => setView('scorecard')} style={{ width: '100%', padding: '15px', background: '#063020', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '900', fontSize: '18px' }}>BACK</button>
       </div>
     );
   }
@@ -177,9 +214,14 @@ export default function App() {
              <span style={{ fontSize: '38px', fontWeight: '900', color: '#064e3b', lineHeight: '1' }}>{finalScore}</span>
              <span style={{ fontSize: '18px', fontWeight: '900', color: '#064e3b' }}>PTS</span>
           </div>
-          <div style={{ display: 'flex', gap: '5px', padding: '5px' }}>
-            <button onClick={() => setShowSummary(false)} style={{ flex: 1, padding: '15px', borderRadius: '10px', border: 'none', background: '#E9ECEF', fontWeight: '900' }}>EDIT</button>
-            <button onClick={handleSubmitScore} style={{ flex: 2, padding: '15px', borderRadius: '10px', border: 'none', background: '#10b981', color: 'white', fontWeight: '900', fontSize: '20px' }}>SUBMIT CARD</button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', padding: '5px' }}>
+            <div style={{ display: 'flex', gap: '5px' }}>
+                <button onClick={() => setShowSummary(false)} style={{ flex: 1, padding: '15px', borderRadius: '10px', border: 'none', background: '#E9ECEF', fontWeight: '900' }}>EDIT</button>
+                <button onClick={handleSubmitScore} style={{ flex: 2, padding: '15px', borderRadius: '10px', border: 'none', background: '#10b981', color: 'white', fontWeight: '900', fontSize: '20px' }}>SUBMIT CARD</button>
+            </div>
+            {isLeaderboardPublic && (
+                <button onClick={loadLeaderboard} style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '2px solid #063020', background: 'white', color: '#063020', fontWeight: '900' }}>VIEW LIVE RESULTS</button>
+            )}
           </div>
         </div>
       )}
