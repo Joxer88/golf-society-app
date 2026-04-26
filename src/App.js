@@ -22,6 +22,7 @@ export default function App() {
   const [verifierName, setVerifierName] = useState("");
   const [showSummary, setShowSummary] = useState(false);
   const [adminTab, setAdminTab] = useState('codes');
+  const [isLocked, setIsLocked] = useState(false); // NEW: Track if score is already submitted
 
   const handleLogout = useCallback(() => { localStorage.clear(); window.location.reload(); }, []);
 
@@ -30,7 +31,17 @@ export default function App() {
     const { data: r } = await supabase.from('rounds').select('*').order('created_at', { ascending: false });
     setAllPlayers(u || []);
     setRounds(r || []);
-  }, []);
+
+    // Check if current player already has a submitted round
+    if (player.name) {
+      const existingRound = r?.find(round => round.player_name === player.name);
+      if (existingRound) {
+        setScores(existingRound.scores || scores);
+        setIsLocked(true);
+        setShowSummary(true);
+      }
+    }
+  }, [player.name, scores]);
 
   useEffect(() => {
     localStorage.setItem('egs_isLoggedIn', isLoggedIn);
@@ -48,6 +59,13 @@ export default function App() {
     } else { alert("Login failed."); }
   };
 
+  const deleteRound = async (id) => {
+    if(window.confirm("Unlock this scorecard for editing?")) {
+      const { error } = await supabase.from('rounds').delete().eq('id', id);
+      if(!error) loadData();
+    }
+  };
+
   const calcPoints = (s, p, si, hcap) => {
     if (s === 0) return 0;
     const pops = Math.floor(hcap / 18) + (hcap % 18 >= si ? 1 : 0);
@@ -59,6 +77,7 @@ export default function App() {
   const finalScore = (f9Pts + b9Pts) - (player.deduction || 0);
 
   const handleSubmitScore = async () => {
+    if (isLocked) return alert("Scorecard is locked.");
     if (!verifierName) return alert("Select Attester.");
     const { error } = await supabase.from('rounds').insert([{
       player_name: player.name,
@@ -67,8 +86,7 @@ export default function App() {
       verifier: verifierName,
       scores: scores,
       f9: f9Pts,
-      b9: b9Pts,
-      status: 'pending'
+      b9: b9Pts
     }]);
     if (!error) { alert("Submitted!"); handleLogout(); }
     else { alert("Database Error: " + error.message); }
@@ -104,8 +122,8 @@ export default function App() {
       <div style={{ background: '#063020', color: 'white', padding: '20px', textAlign: 'center' }}>
         <h2 style={{ margin: 0 }}>SOCIETY ADMIN</h2>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' }}>
-          <button onClick={() => setAdminTab('codes')} style={{ padding: '10px', background: adminTab === 'codes' ? '#C9A66B' : 'white', color: adminTab === 'codes' ? 'white' : 'black', border: 'none', borderRadius: '5px', fontWeight: '800' }}>ACCESS CODES</button>
-          <button onClick={() => setAdminTab('leaderboard')} style={{ padding: '10px', background: adminTab === 'leaderboard' ? '#C9A66B' : 'white', color: adminTab === 'leaderboard' ? 'white' : 'black', border: 'none', borderRadius: '5px', fontWeight: '800' }}>RESULTS</button>
+          <button onClick={() => setAdminTab('codes')} style={{ padding: '10px', background: adminTab === 'codes' ? '#C9A66B' : 'white', color: adminTab === 'codes' ? 'white' : 'black', border: 'none', borderRadius: '5px' }}>CODES</button>
+          <button onClick={() => setAdminTab('leaderboard')} style={{ padding: '10px', background: adminTab === 'leaderboard' ? '#C9A66B' : 'white', color: adminTab === 'leaderboard' ? 'white' : 'black', border: 'none', borderRadius: '5px' }}>RESULTS</button>
           <button onClick={handleLogout} style={{ padding: '10px', background: '#e63946', color: 'white', border: 'none', borderRadius: '5px' }}>OUT</button>
         </div>
       </div>
@@ -114,13 +132,17 @@ export default function App() {
           allPlayers.map(p => (
             <div key={p.id} style={{ background: 'white', padding: '12px', marginBottom: '5px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ fontWeight: '700' }}>{p.name}</span>
-              <span style={{ color: '#C9A66B', fontWeight: '900', fontSize: '20px' }}>{p.access_code}</span>
+              <span style={{ color: '#C9A66B', fontWeight: '900' }}>{p.access_code}</span>
             </div>
           ))
         ) : (
-          rounds.map((r, i) => (
-             <div key={r.id} style={{ background: '#fff', padding: '10px', marginBottom: '5px', borderRadius: '8px', borderLeft: '5px solid #C9A66B' }}>
-               <b>{r.player_name}</b> — {r.total_points} pts <small>(F9: {r.f9} B9: {r.b9})</small>
+          rounds.map((r) => (
+             <div key={r.id} style={{ background: '#fff', padding: '10px', marginBottom: '5px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+               <div>
+                  <b>{r.player_name}</b> — {r.total_points} pts <br/>
+                  <small>F9: {r.f9} | B9: {r.b9}</small>
+               </div>
+               <button onClick={() => deleteRound(r.id)} style={{ background: '#e63946', color: 'white', border: 'none', padding: '8px', borderRadius: '5px', fontSize: '11px' }}>UNLOCK/EDIT</button>
              </div>
           ))
         )}
@@ -130,23 +152,30 @@ export default function App() {
 
   return (
     <div style={{ backgroundColor: '#ffffff', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'sans-serif' }}>
+      {isLocked && <div style={{background:'#e63946', color:'white', textAlign:'center', padding:'5px', fontSize:'12px', fontWeight:'800'}}>SUBMITTED - VIEW ONLY</div>}
+      
       {!showSummary ? (
         <div style={{ width: '100%', maxWidth: '450px', margin: '0 auto', display: 'flex', flexDirection: 'column', height: '100%' }}>
           <div style={{ padding: '10px 5px', backgroundColor: '#063020', color: 'white', textAlign: 'center' }}>
             <div style={{ fontSize: '18px', fontWeight: '800', color: '#C9A66B' }}>HCAP: {player.handicap} | DEDUCT: {player.deduction || 0}</div>
           </div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
               <div style={{ fontSize: '22px', fontWeight: '900', marginBottom: '10px' }}>HOLE {currentHole + 1} (PAR {courseData[currentHole].par})</div>
               <div style={{ fontSize: '140px', fontWeight: '900', color: '#063020', lineHeight: '0.8' }}>{scores[currentHole] === 0 ? "X" : scores[currentHole]}</div>
-              <div style={{ display: 'flex', gap: '25px', marginTop: '30px' }}>
-                <button onClick={() => { if(scores[currentHole] > 1){const n=[...scores]; n[currentHole]--; setScores(n);}}} style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#e63946', color: 'white', border: 'none', fontSize: '45px', fontWeight: '900' }}>-</button>
-                <button onClick={() => { const n = [...scores]; if(n[currentHole] === 0) n[currentHole] = courseData[currentHole].par; else n[currentHole]++; setScores(n); }} style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#2a9d8f', color: 'white', border: 'none', fontSize: '45px', fontWeight: '900' }}>+</button>
-              </div>
-              <button onClick={() => { const n = [...scores]; n[currentHole] = 0; setScores(n); }} style={{ marginTop: '25px', padding: '10px 30px', borderRadius: '12px', background: '#495057', color: 'white', border: 'none', fontWeight: '900' }}>PICK UP (X)</button>
+              
+              {!isLocked && (
+                <>
+                  <div style={{ display: 'flex', gap: '25px', marginTop: '30px' }}>
+                    <button onClick={() => { if(scores[currentHole] > 1){const n=[...scores]; n[currentHole]--; setScores(n);}}} style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#e63946', color: 'white', border: 'none', fontSize: '45px', fontWeight: '900' }}>-</button>
+                    <button onClick={() => { const n = [...scores]; if(n[currentHole] === 0) n[currentHole] = courseData[currentHole].par; else n[currentHole]++; setScores(n); }} style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#2a9d8f', color: 'white', border: 'none', fontSize: '45px', fontWeight: '900' }}>+</button>
+                  </div>
+                  <button onClick={() => { const n = [...scores]; n[currentHole] = 0; setScores(n); }} style={{ marginTop: '25px', padding: '10px 30px', borderRadius: '12px', background: '#495057', color: 'white', border: 'none', fontWeight: '900' }}>PICK UP (X)</button>
+                </>
+              )}
           </div>
           <div style={{ display: 'flex', padding: '15px', gap: '10px', background: '#063020' }}>
-              <button onClick={() => currentHole > 0 && setCurrentHole(currentHole - 1)} style={{ flex: 1, padding: '18px', borderRadius: '12px', background: '#E9ECEF', border: 'none', fontWeight: '900', fontSize: '18px' }}>PREV</button>
-              <button onClick={() => currentHole < 17 ? setCurrentHole(currentHole+1) : setShowSummary(true)} style={{ flex: 2, padding: '18px', borderRadius: '12px', background: '#C9A66B', color: 'white', border: 'none', fontWeight: '900', fontSize: '18px' }}>{currentHole < 17 ? 'NEXT' : 'SUMMARY'}</button>
+              <button onClick={() => currentHole > 0 && setCurrentHole(currentHole - 1)} style={{ flex: 1, padding: '18px', borderRadius: '12px', background: '#E9ECEF', border: 'none', fontWeight: '900' }}>PREV</button>
+              <button onClick={() => currentHole < 17 ? setCurrentHole(currentHole+1) : setShowSummary(true)} style={{ flex: 2, padding: '18px', borderRadius: '12px', background: '#C9A66B', color: 'white', border: 'none', fontWeight: '900' }}>{currentHole < 17 ? 'NEXT' : 'SUMMARY'}</button>
           </div>
         </div>
       ) : (
@@ -165,14 +194,21 @@ export default function App() {
           </div>
           <div style={{ padding: '10px' }}>
             <div style={{ background: '#d1fae5', padding: '12px', borderRadius: '10px', textAlign: 'center', fontWeight: '900', fontSize: '20px', border: '2px solid #10b981', marginBottom: '10px' }}>FINAL: {finalScore} PTS</div>
-            <select value={verifierName} onChange={(e) => setVerifierName(e.target.value)} style={{ width: '100%', padding: '15px', borderRadius: '10px', marginBottom: '10px', fontSize: '16px' }}>
-              <option value="">-- ATTESTER --</option>
-              {allPlayers.filter(p => p.name !== player.name).map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
-            </select>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setShowSummary(false)} style={{ flex: 1, padding: '15px', borderRadius: '10px', background: '#eee', border: 'none', fontWeight: '900' }}>EDIT</button>
-              <button onClick={handleSubmitScore} style={{ flex: 2, padding: '15px', borderRadius: '10px', background: '#10b981', color: 'white', border: 'none', fontWeight: '900' }}>SUBMIT</button>
-            </div>
+            
+            {!isLocked ? (
+              <>
+                <select value={verifierName} onChange={(e) => setVerifierName(e.target.value)} style={{ width: '100%', padding: '15px', borderRadius: '10px', marginBottom: '10px', fontSize: '16px' }}>
+                  <option value="">-- ATTESTER --</option>
+                  {allPlayers.filter(p => p.name !== player.name).map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+                </select>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => setShowSummary(false)} style={{ flex: 1, padding: '15px', borderRadius: '10px', background: '#eee', border: 'none', fontWeight: '900' }}>EDIT</button>
+                  <button onClick={handleSubmitScore} style={{ flex: 2, padding: '15px', borderRadius: '10px', background: '#10b981', color: 'white', border: 'none', fontWeight: '900' }}>SUBMIT</button>
+                </div>
+              </>
+            ) : (
+              <button onClick={handleLogout} style={{ width: '100%', padding: '20px', borderRadius: '10px', background: '#063020', color: 'white', border: 'none', fontWeight: '900' }}>LOG OUT</button>
+            )}
           </div>
         </div>
       )}
