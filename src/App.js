@@ -46,81 +46,81 @@ export default function App() {
     return (
       <div style={{ backgroundColor: '#063020', height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '30px' }}>
         <h1 style={{ color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '45px' }}>LOGIN</h1>
-        <input type="text" value={loginCode} onChange={e => setLoginCode(e.target.value)} placeholder="000" style={{ padding: '25px', fontSize: '30px', textAlign: 'center', borderRadius: '15px', marginBottom: '15px', border: 'none' }} />
-        <button onClick={handleLogin} style={{ padding: '25px', backgroundColor: '#C9A66B', color: 'white', border: 'none', borderRadius: '15px', fontWeight: '900', fontSize: '24px' }}>ENTER</button>
+        <input type="text" value={loginCode} onChange={e => setLoginCode(e.target.value)} placeholder="000" style={{ padding: '20px', fontSize: '30px', textAlign: 'center', borderRadius: '15px', marginBottom: '15px', border: 'none' }} />
+        <button onClick={handleLogin} style={{ padding: '20px', backgroundColor: '#C9A66B', color: 'white', border: 'none', borderRadius: '15px', fontWeight: '900', fontSize: '24px' }}>ENTER</button>
       </div>
     );
   }
 
   return (
-    <div style={{ backgroundColor: '#ffffff', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: 'sans-serif' }}>
+    <div style={{ backgroundColor: '#ffffff', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'sans-serif' }}>
       {!showSummary ? (
-        <div style={{ width: '100%', maxWidth: '450px', display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <div style={{ width: '100%', maxWidth: '450px', margin: '0 auto', display: 'flex', flexDirection: 'column', height: '100%' }}>
           
-          {/* HEADER - BIGGER PLAYER NAME */}
-          <div style={{ padding: '30px 20px', backgroundColor: '#063020', color: 'white', textAlign: 'center' }}>
-            <div style={{ fontSize: '32px', fontWeight: '900', letterSpacing: '1px' }}>{player.name.toUpperCase()}</div>
-            <div style={{ marginTop: '8px', fontSize: '22px', fontWeight: '800', color: '#C9A66B' }}>HCAP: {player.handicap}</div>
+          {/* HEADER - TIGHTENED */}
+          <div style={{ padding: '15px 10px', backgroundColor: '#063020', color: 'white', textAlign: 'center' }}>
+            <div style={{ fontSize: '28px', fontWeight: '900' }}>{player.name.toUpperCase()}</div>
+            <div style={{ fontSize: '20px', fontWeight: '800', color: '#C9A66B' }}>HCAP: {player.handicap}</div>
           </div>
 
-          {/* STATS BAR - MASSIVE NUMBERS */}
-          <div style={{ display: 'flex', backgroundColor: '#F1F3F5', borderBottom: '3px solid #DEE2E6' }}>
-              <div style={{ flex: 1, textAlign: 'center', padding: '20px 10px', borderRight: '2px solid #DEE2E6' }}>
-                  <div style={{ color: '#000', fontWeight: '900', fontSize: '18px' }}>HOLE</div>
-                  <div style={{ fontSize: '45px', fontWeight: '900' }}>{currentHole + 1}</div>
+          {/* STATS BAR - REDUCED VERTICAL WHITE SPACE */}
+          <div style={{ display: 'flex', backgroundColor: '#F1F3F5', borderBottom: '2px solid #DEE2E6' }}>
+              <div style={{ flex: 1, textAlign: 'center', padding: '8px 0', borderRight: '2px solid #DEE2E6' }}>
+                  <div style={{ color: '#000', fontWeight: '900', fontSize: '16px' }}>HOLE</div>
+                  <div style={{ fontSize: '40px', fontWeight: '900', lineHeight: '1' }}>{currentHole + 1}</div>
               </div>
-              <div style={{ flex: 1, textAlign: 'center', padding: '20px 10px', borderRight: '2px solid #DEE2E6' }}>
-                  <div style={{ color: '#000', fontWeight: '900', fontSize: '18px' }}>PAR</div>
-                  <div style={{ fontSize: '45px', fontWeight: '900' }}>{courseData[currentHole].par}</div>
+              <div style={{ flex: 1, textAlign: 'center', padding: '8px 0', borderRight: '2px solid #DEE2E6' }}>
+                  <div style={{ color: '#000', fontWeight: '900', fontSize: '16px' }}>PAR</div>
+                  <div style={{ fontSize: '40px', fontWeight: '900', lineHeight: '1' }}>{courseData[currentHole].par}</div>
               </div>
-              <div style={{ flex: 1, textAlign: 'center', padding: '20px 10px' }}>
-                  <div style={{ color: '#000', fontWeight: '900', fontSize: '18px' }}>S.I.</div>
-                  <div style={{ fontSize: '45px', fontWeight: '900' }}>{courseData[currentHole].si}</div>
+              <div style={{ flex: 1, textAlign: 'center', padding: '8px 0' }}>
+                  <div style={{ color: '#000', fontWeight: '900', fontSize: '16px' }}>S.I.</div>
+                  <div style={{ fontSize: '40px', fontWeight: '900', lineHeight: '1' }}>{courseData[currentHole].si}</div>
               </div>
           </div>
 
-          {/* SCORE AREA - STROKES (KEPT SAME) + BIG PU */}
-          <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px 10px' }}>
-             <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                <button onClick={() => { if(scores[currentHole] > 1){const n=[...scores]; n[currentHole]--; setScores(n);}}} style={{ width: '90px', height: '90px', borderRadius: '20px', backgroundColor: '#e63946', color: 'white', border: 'none', fontSize: '60px', fontWeight: '900' }}>-</button>
+          {/* SCORE AREA - CENTERED BUT COMPACT */}
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '10px' }}>
+             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <button onClick={() => { if(scores[currentHole] > 1){const n=[...scores]; n[currentHole]--; setScores(n);}}} style={{ width: '85px', height: '85px', borderRadius: '20px', backgroundColor: '#e63946', color: 'white', border: 'none', fontSize: '60px', fontWeight: '900' }}>-</button>
                 
-                <div style={{ textAlign: 'center', minWidth: '110px' }}>
-                    <div style={{ fontSize: '140px', fontWeight: '900', color: '#063020', lineHeight: '0.9' }}>{scores[currentHole] === 0 ? "X" : scores[currentHole]}</div>
-                    <div style={{ fontWeight: '900', color: '#495057', fontSize: '18px' }}>STROKES</div>
+                <div style={{ textAlign: 'center', minWidth: '100px' }}>
+                    <div style={{ fontSize: '130px', fontWeight: '900', color: '#063020', lineHeight: '0.85' }}>{scores[currentHole] === 0 ? "X" : scores[currentHole]}</div>
+                    <div style={{ fontWeight: '900', color: '#495057', fontSize: '16px' }}>STROKES</div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    <button onClick={() => { const n = [...scores]; n[currentHole] = 0; setScores(n); }} style={{ width: '90px', height: '60px', borderRadius: '15px', backgroundColor: '#495057', color: 'white', border: 'none', fontSize: '30px', fontWeight: '900' }}>PU</button>
-                    <button onClick={() => { const n = [...scores]; if(n[currentHole] === 0) n[currentHole] = courseData[currentHole].par; else n[currentHole]++; setScores(n); }} style={{ width: '90px', height: '90px', borderRadius: '20px', backgroundColor: '#2a9d8f', color: 'white', border: 'none', fontSize: '60px', fontWeight: '900' }}>+</button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <button onClick={() => { const n = [...scores]; n[currentHole] = 0; setScores(n); }} style={{ width: '85px', height: '55px', borderRadius: '15px', backgroundColor: '#495057', color: 'white', border: 'none', fontSize: '32px', fontWeight: '900' }}>PU</button>
+                    <button onClick={() => { const n = [...scores]; if(n[currentHole] === 0) n[currentHole] = courseData[currentHole].par; else n[currentHole]++; setScores(n); }} style={{ width: '85px', height: '85px', borderRadius: '20px', backgroundColor: '#2a9d8f', color: 'white', border: 'none', fontSize: '60px', fontWeight: '900' }}>+</button>
                 </div>
              </div>
           </div>
 
-          {/* FOOTER - BIGGER POINTS */}
-          <div style={{ borderTop: '4px solid #F1F3F5', padding: '20px' }}>
-            <div style={{ display: 'flex', gap: '15px', marginBottom: '25px' }}>
-                <div style={{ flex: 1, textAlign: 'center', padding: '20px', backgroundColor: '#F8F9FA', borderRadius: '15px', border: '2px solid #DEE2E6' }}>
-                    <div style={{ fontWeight: '900', color: '#063020', fontSize: '18px' }}>POINTS</div>
-                    <div style={{ fontSize: '50px', fontWeight: '900' }}>{calcPoints(scores[currentHole], courseData[currentHole].par, courseData[currentHole].si)}</div>
+          {/* FOOTER - TIGHTENED PADDING AND GAPS */}
+          <div style={{ borderTop: '3px solid #F1F3F5', padding: '10px 15px' }}>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                <div style={{ flex: 1, textAlign: 'center', padding: '8px', backgroundColor: '#F8F9FA', borderRadius: '12px', border: '1px solid #DEE2E6' }}>
+                    <div style={{ fontWeight: '900', color: '#063020', fontSize: '16px' }}>POINTS</div>
+                    <div style={{ fontSize: '45px', fontWeight: '900', lineHeight: '1' }}>{calcPoints(scores[currentHole], courseData[currentHole].par, courseData[currentHole].si)}</div>
                 </div>
-                <div style={{ flex: 1, textAlign: 'center', padding: '20px', backgroundColor: '#F8F9FA', borderRadius: '15px', border: '2px solid #DEE2E6' }}>
-                    <div style={{ fontWeight: '900', color: '#063020', fontSize: '18px' }}>TOTAL</div>
-                    <div style={{ fontSize: '50px', fontWeight: '900' }}>{totalPoints}</div>
+                <div style={{ flex: 1, textAlign: 'center', padding: '8px', backgroundColor: '#F8F9FA', borderRadius: '12px', border: '1px solid #DEE2E6' }}>
+                    <div style={{ fontWeight: '900', color: '#063020', fontSize: '16px' }}>TOTAL</div>
+                    <div style={{ fontSize: '45px', fontWeight: '900', lineHeight: '1' }}>{totalPoints}</div>
                 </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '15px', paddingBottom: '25px' }}>
-                <button onClick={() => currentHole > 0 && setCurrentHole(currentHole - 1)} style={{ flex: 1, padding: '25px', borderRadius: '15px', background: '#E9ECEF', border: 'none', fontWeight: '900', color: '#495057', fontSize: '22px' }}>PREV</button>
-                <button onClick={() => currentHole < 17 ? setCurrentHole(currentHole+1) : setShowSummary(true)} style={{ flex: 2, padding: '25px', borderRadius: '15px', background: '#063020', color: 'white', border: 'none', fontWeight: '900', fontSize: '24px' }}>NEXT</button>
+            <div style={{ display: 'flex', gap: '10px', paddingBottom: '10px' }}>
+                <button onClick={() => currentHole > 0 && setCurrentHole(currentHole - 1)} style={{ flex: 1, padding: '18px', borderRadius: '15px', background: '#E9ECEF', border: 'none', fontWeight: '900', color: '#495057', fontSize: '20px' }}>PREV</button>
+                <button onClick={() => currentHole < 17 ? setCurrentHole(currentHole+1) : setShowSummary(true)} style={{ flex: 2, padding: '18px', borderRadius: '15px', background: '#063020', color: 'white', border: 'none', fontWeight: '900', fontSize: '22px' }}>NEXT</button>
             </div>
           </div>
 
         </div>
       ) : (
-        <div style={{ padding: '80px 20px', textAlign: 'center', backgroundColor: 'white', minHeight: '100vh', width: '100%' }}>
-          <h2 style={{ fontSize: '50px', fontWeight: '900', color: '#063020' }}>FINISHED</h2>
-          <div style={{ fontSize: '140px', fontWeight: '900', margin: '40px 0', color: '#C9A66B' }}>{totalPoints}</div>
-          <button onClick={handleLogout} style={{ padding: '30px 60px', backgroundColor: '#063020', color: 'white', borderRadius: '15px', border: 'none', fontWeight: '900', fontSize: '26px' }}>SUBMIT</button>
+        <div style={{ padding: '40px 20px', textAlign: 'center', height: '100vh' }}>
+          <h2 style={{ fontSize: '45px', fontWeight: '900', color: '#063020' }}>FINISHED</h2>
+          <div style={{ fontSize: '140px', fontWeight: '900', color: '#C9A66B' }}>{totalPoints}</div>
+          <button onClick={handleLogout} style={{ padding: '25px 50px', backgroundColor: '#063020', color: 'white', borderRadius: '15px', border: 'none', fontWeight: '900', fontSize: '24px' }}>SUBMIT</button>
         </div>
       )}
     </div>
