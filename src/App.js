@@ -27,7 +27,7 @@ export default function App() {
     try {
       const { data: users } = await supabase.from('users').select('name').neq('name', player.name);
       setAllPlayers(users || []);
-    } catch (e) { console.error("Data load failed", e); }
+    } catch (e) { console.error(e); }
   }, [player.name]);
 
   useEffect(() => {
@@ -39,12 +39,12 @@ export default function App() {
   }, [isLoggedIn, player, currentHole, scores, loadSocietyData]);
 
   const handleLogin = async () => {
-    const { data, error } = await supabase.from('users').select('*').eq('access_code', loginCode).single();
+    const { data } = await supabase.from('users').select('*').eq('access_code', loginCode).single();
     if (data) { 
       const dVal = data.deduction !== undefined && data.deduction !== null ? Number(data.deduction) : 0;
       setPlayer({ name: data.name, handicap: data.handicap, deduction: dVal }); 
       setIsLoggedIn(true); 
-    } else { alert("Invalid Code or Connection Error."); }
+    } else { alert("Login failed."); }
   };
 
   const calcPoints = (s, p, si) => {
@@ -55,22 +55,15 @@ export default function App() {
 
   const f9Points = scores.slice(0, 9).reduce((acc, s, i) => acc + calcPoints(s, courseData[i].par, courseData[i].si), 0);
   const b9Points = scores.slice(9, 18).reduce((acc, s, i) => acc + calcPoints(s, courseData[i + 9].par, courseData[i + 9].si), 0);
-  
-  const safeDeduct = Number(player.deduction) || 0;
-  const finalScore = (f9Points + b9Points) - safeDeduct;
+  const finalScore = (f9Points + b9Points) - (Number(player.deduction) || 0);
 
   const handleSubmitScore = async () => {
-    if (!verifierName) return alert("Please select an Attester.");
+    if (!verifierName) return alert("Select Attester.");
     const { error } = await supabase.from('rounds').insert([{
-      player_name: player.name,
-      handicap: player.handicap,
-      scores: scores,
-      total_points: finalScore,
-      verifier: verifierName,
-      date: new Date().toISOString()
+      player_name: player.name, total_points: finalScore, verifier: verifierName, date: new Date().toISOString()
     }]);
-    if (!error) { alert("Score Submitted!"); handleLogout(); }
-    else { alert("Submit failed. Make sure 'deduction' column exists in users table and 'verifier' in rounds table."); }
+    if (!error) { alert("Submitted!"); handleLogout(); }
+    else { alert("Error: " + error.message); }
   };
 
   const ScoreTable = ({ startIndex }) => (
@@ -152,12 +145,12 @@ export default function App() {
               <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '6px', overflow: 'hidden' }}>
                   <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '22px', padding: '10px' }}>FRONT 9</div>
                   <ScoreTable startIndex={0} />
-                  <div style={{ padding: '15px 0', textAlign: 'center', background: '#f1f3f5', fontSize: '42px', fontWeight: '900', color: '#063020', borderTop: '1px solid #ddd' }}>{f9Points}</div>
+                  <div style={{ padding: '12px 0', textAlign: 'center', background: '#f1f3f5', fontSize: '42px', fontWeight: '900', color: '#063020', borderTop: '1px solid #ddd' }}>{f9Points}</div>
               </div>
               <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '6px', overflow: 'hidden' }}>
                   <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '22px', padding: '10px' }}>BACK 9</div>
                   <ScoreTable startIndex={9} />
-                  <div style={{ padding: '15px 0', textAlign: 'center', background: '#f1f3f5', fontSize: '42px', fontWeight: '900', color: '#063020', borderTop: '1px solid #ddd' }}>{b9Points}</div>
+                  <div style={{ padding: '12px 0', textAlign: 'center', background: '#f1f3f5', fontSize: '42px', fontWeight: '900', color: '#063020', borderTop: '1px solid #ddd' }}>{b9Points}</div>
               </div>
           </div>
           <div style={{ display: 'flex', gap: '5px', padding: '5px', alignItems: 'center' }}>
@@ -170,11 +163,11 @@ export default function App() {
               </div>
               <div style={{ textAlign: 'center', padding: '2px 12px', backgroundColor: '#fff5f5', borderRadius: '8px', border: '1px solid #feb2b2' }}>
                 <div style={{ fontSize: '11px', fontWeight: '900', color: '#c53030' }}>DEDUCTION</div>
-                <div style={{ fontSize: '30px', fontWeight: '900', color: '#c53030' }}>-{safeDeduct}</div>
+                <div style={{ fontSize: '30px', fontWeight: '900', color: '#c53030' }}>-{player.deduction}</div>
               </div>
           </div>
           <div style={{ textAlign: 'center', background: '#d1fae5', padding: '10px', borderTop: '3px solid #10b981' }}>
-             <span style={{ fontSize: '48px', fontWeight: '900', color: '#064e3b' }}>FINAL: {finalScore} PTS</span>
+             <span style={{ fontSize: '54px', fontWeight: '900', color: '#064e3b' }}>FINAL: {finalScore} PTS</span>
           </div>
           <div style={{ display: 'flex', gap: '5px', padding: '5px' }}>
             <button onClick={() => setShowSummary(false)} style={{ flex: 1, padding: '20px', borderRadius: '10px', border: 'none', background: '#E9ECEF', fontWeight: '900' }}>EDIT</button>
