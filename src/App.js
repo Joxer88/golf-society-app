@@ -37,6 +37,11 @@ export default function App() {
     localStorage.setItem('egs_scores', JSON.stringify(scores));
   }, [isLoggedIn, isVerified, player, currentHole, scores]);
 
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.reload();
+  };
+
   const handleLogin = async () => {
     if (loginCode === compSettings.adminCode) {
       setPlayer({ name: "ADMIN", handicap: 0 });
@@ -70,8 +75,7 @@ export default function App() {
   const handleSubmit = async () => {
     if (!verifierName) return alert("Marker name required");
     await supabase.from('rounds').insert([{ player_name: player.name, handicap: player.handicap, total_points: finalTotal, verifier: verifierName, scores: scores }]);
-    localStorage.clear();
-    window.location.reload();
+    handleLogout();
   };
 
   const containerStyle = { 
@@ -91,6 +95,7 @@ export default function App() {
             <input type="text" inputMode="numeric" maxLength="3" value={loginCode} onChange={(e) => setLoginCode(e.target.value)}
               style={{ width: '100%', padding: '20px', fontSize: '40px', textAlign: 'center', borderRadius: '15px', border: 'none', color: '#1A4D3A', fontWeight: '900', marginBottom: '20px' }} />
             <button onClick={handleLogin} style={{ width: '100%', padding: '20px', backgroundColor: '#C9A66B', color: 'white', fontSize: '24px', fontWeight: '900', border: 'none', borderRadius: '15px' }}>ENTER</button>
+            <button onClick={handleLogout} style={{ marginTop: '50px', color: '#666', background: 'none', border: 'none', fontSize: '12px' }}>CLEAR CACHE / LOGOUT</button>
           </div>
         </div>
       </div>
@@ -109,7 +114,7 @@ export default function App() {
               
               <button onClick={() => setIsVerified(true)} style={{ width: '100%', padding: '20px', backgroundColor: '#22c55e', color: 'white', fontSize: '24px', fontWeight: '900', border: 'none', borderRadius: '15px', marginBottom: '15px' }}>YES, THAT'S ME</button>
               
-              <button onClick={() => { setIsLoggedIn(false); localStorage.clear(); }} style={{ width: '100%', padding: '15px', backgroundColor: 'transparent', color: '#ef4444', fontSize: '18px', fontWeight: 'bold', border: '2px solid #ef4444', borderRadius: '15px' }}>NO, WRONG NAME</button>
+              <button onClick={handleLogout} style={{ width: '100%', padding: '15px', backgroundColor: 'transparent', color: '#ef4444', fontSize: '18px', fontWeight: 'bold', border: '2px solid #ef4444', borderRadius: '15px' }}>NO, WRONG NAME</button>
             </div>
           </div>
         </div>
@@ -188,6 +193,7 @@ export default function App() {
               <button onClick={() => setShowSummary(true)} style={{ flex: 2, padding: '10px 0', backgroundColor: '#2563eb', color: 'white', fontSize: '32px', fontWeight: '900', border: 'none', borderRadius: '10px' }}>REVIEW</button>
             )}
           </div>
+          <button onClick={handleLogout} style={{ backgroundColor: '#1A4D3A', color: '#2A5D4A', border: 'none', fontSize: '10px', padding: '2px' }}>TESTER RESET</button>
         </div>
       </div>
     </div>
