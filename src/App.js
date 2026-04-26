@@ -14,7 +14,7 @@ const courseData = [
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('egs_isLoggedIn') === 'true');
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('egs_user')) || null);
-  const [activeEntry, setActiveEntry] = useState(null); // The player currently being scored
+  const [activeEntry, setActiveEntry] = useState(null); 
   const [currentHole, setCurrentHole] = useState(0);
   const [scores, setScores] = useState(courseData.map(h => h.par));
   const [loginCode, setLoginCode] = useState("");
@@ -22,15 +22,22 @@ export default function App() {
   const [rounds, setRounds] = useState([]);
   const [verifierName, setVerifierName] = useState("");
   const [showSummary, setShowSummary] = useState(false);
-  const [adminMode, setAdminMode] = useState('menu'); // menu, players, results, scoring
+  const [adminMode, setAdminMode] = useState('menu'); 
 
-  const handleLogout = useCallback(() => { localStorage.clear(); window.location.reload(); }, []);
+  const handleLogout = useCallback(() => { 
+    localStorage.clear(); 
+    window.location.reload(); 
+  }, []);
 
   const loadData = useCallback(async () => {
-    const { data: u } = await supabase.from('users').select('*').order('name');
-    const { data: r } = await supabase.from('rounds').select('*').order('total_points', { ascending: false });
-    setAllPlayers(u || []);
-    setRounds(r || []);
+    try {
+      const { data: u } = await supabase.from('users').select('*').order('name');
+      const { data: r } = await supabase.from('rounds').select('*').order('total_points', { ascending: false });
+      setAllPlayers(u || []);
+      setRounds(r || []);
+    } catch (err) {
+      console.error("Data Load Error:", err);
+    }
   }, []);
 
   useEffect(() => {
@@ -38,33 +45,22 @@ export default function App() {
   }, [isLoggedIn, loadData]);
 
   const handleLogin = async () => {
-    const { data } = await supabase.from('users').select('*').eq('access_code', loginCode).single();
+    const { data, error } = await supabase.from('users').select('*').eq('access_code', loginCode).single();
     if (data) {
       const userData = { ...data, isAdmin: data.show_leaderboard === true };
       setUser(userData);
       localStorage.setItem('egs_user', JSON.stringify(userData));
+      localStorage.setItem('egs_isLoggedIn', 'true');
       setIsLoggedIn(true);
       if (!userData.isAdmin) setActiveEntry(userData);
-    } else { alert("Invalid Code"); }
-  };
-
-  const startProxyScoring = (p) => {
-    setActiveEntry(p);
-    setScores(courseData.map(h => h.par));
-    setCurrentHole(0);
-    setAdminMode('scoring');
+    } else { 
+      alert("Invalid Code. " + (error ? error.message : "")); 
+    }
   };
 
   const updateDeduction = async (id, val) => {
     await supabase.from('users').update({ deduction: parseInt(val) || 0 }).eq('id', id);
     loadData();
-  };
-
-  const deleteRound = async (id) => {
-    if (window.confirm("Delete this card?")) {
-      await supabase.from('rounds').delete().eq('id', id);
-      loadData();
-    }
   };
 
   const calcPoints = (s, p, si, hcap) => {
@@ -74,6 +70,7 @@ export default function App() {
   };
 
   const getTotals = () => {
+    if (!activeEntry) return 0;
     const pts = scores.reduce((acc, s, i) => acc + calcPoints(s, courseData[i].par, courseData[i].si, activeEntry.handicap), 0);
     return pts - (activeEntry.deduction || 0);
   };
@@ -95,85 +92,74 @@ export default function App() {
     } else { alert(error.message); }
   };
 
+  // --- LOGIN SCREEN ---
   if (!isLoggedIn) return (
     <div style={{ backgroundColor: '#063020', height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '30px' }}>
-      <h1 style={{ color: 'white', textAlign: 'center', fontWeight: '900' }}>SOCIETY LOGIN</h1>
-      <input type="text" value={loginCode} onChange={e => setLoginCode(e.target.value)} placeholder="Access Code" style={{ padding: '20px', fontSize: '24px', textAlign: 'center', borderRadius: '15px', border: 'none', marginBottom: '10px' }} />
+      <h1 style={{ color: 'white', textAlign: 'center', fontWeight: '900' }}>LOGIN</h1>
+      <input type="text" value={loginCode} onChange={e => setLoginCode(e.target.value)} placeholder="000" style={{ padding: '20px', fontSize: '24px', textAlign: 'center', borderRadius: '15px', border: 'none', marginBottom: '10px' }} />
       <button onClick={handleLogin} style={{ padding: '20px', backgroundColor: '#C9A66B', color: 'white', borderRadius: '15px', fontWeight: '900', border: 'none' }}>ENTER</button>
     </div>
   );
 
-  if (user.isAdmin && adminMode !== 'scoring') return (
+  // --- ADMIN VIEW ---
+  if (user?.isAdmin && adminMode !== 'scoring') return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
       <h2 style={{ fontWeight: '900', color: '#063020' }}>ADMIN: {user.name}</h2>
       <div style={{ display: 'grid', gap: '10px', marginBottom: '20px' }}>
-        <button onClick={() => setAdminMode('players')} style={{ padding: '15px', background: '#063020', color: 'white', fontWeight: '800', borderRadius: '10px' }}>MANAGE PLAYERS & DEDUCTIONS</button>
-        <button onClick={() => setAdminMode('results')} style={{ padding: '15px', background: '#C9A66B', color: 'white', fontWeight: '800', borderRadius: '10px' }}>LIVE RESULTS / DELETE ROUNDS</button>
+        <button onClick={() => setAdminMode('players')} style={{ padding: '15px', background: '#063020', color: 'white', fontWeight: '800', borderRadius: '10px' }}>DEDUCTIONS / PROXY SCORE</button>
+        <button onClick={() => setAdminMode('results')} style={{ padding: '15px', background: '#C9A66B', color: 'white', fontWeight: '800', borderRadius: '10px' }}>RESULTS / DELETE</button>
         <button onClick={handleLogout} style={{ padding: '15px', background: '#eee', fontWeight: '800', borderRadius: '10px' }}>LOGOUT</button>
       </div>
-
-      {adminMode === 'players' && (
-        <div>
-          <h3>All Players</h3>
-          {allPlayers.map(p => (
-            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', borderBottom: '1px solid #ddd', alignItems: 'center' }}>
-              <span>{p.name} (H:{p.handicap})</span>
-              <div style={{ display: 'flex', gap: '5px' }}>
-                <input type="number" defaultValue={p.deduction} onBlur={(e) => updateDeduction(p.id, e.target.value)} style={{ width: '40px' }} />
-                <button onClick={() => startProxyScoring(p)} style={{ background: '#10b981', color: 'white', border: 'none', borderRadius: '5px', padding: '5px' }}>SCORE</button>
-              </div>
-            </div>
-          ))}
+      {adminMode === 'players' && allPlayers.map(p => (
+        <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', borderBottom: '1px solid #ddd', alignItems: 'center' }}>
+          <span>{p.name} (H:{p.handicap})</span>
+          <div style={{ display: 'flex', gap: '5px' }}>
+            <input type="number" defaultValue={p.deduction} onBlur={(e) => updateDeduction(p.id, e.target.value)} style={{ width: '45px', textAlign: 'center' }} />
+            <button onClick={() => { setActiveEntry(p); setScores(courseData.map(h => h.par)); setAdminMode('scoring'); }} style={{ background: '#10b981', color: 'white', border: 'none', borderRadius: '5px', padding: '5px' }}>SCORE</button>
+          </div>
         </div>
-      )}
-
-      {adminMode === 'results' && (
-        <div>
-          <h3>Results</h3>
-          {rounds.map(r => (
-            <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', borderBottom: '1px solid #ddd' }}>
-              <span>{r.player_name}: <b>{r.total_points} pts</b></span>
-              <button onClick={() => deleteRound(r.id)} style={{ color: 'red', border: 'none', background: 'none' }}>DELETE</button>
-            </div>
-          ))}
+      ))}
+      {adminMode === 'results' && rounds.map(r => (
+        <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', borderBottom: '1px solid #ddd' }}>
+          <span>{r.player_name}: <b>{r.total_points}</b></span>
+          <button onClick={async () => { if(window.confirm("Delete?")){ await supabase.from('rounds').delete().eq('id', r.id); loadData(); }}} style={{ color: 'red', border: 'none', background: 'none' }}>DEL</button>
         </div>
-      )}
+      ))}
     </div>
   );
 
-  // --- SCORECARD UI (Used by both Players and Admin Proxy) ---
+  // --- SCORECARD UI ---
   return (
     <div style={{ fontFamily: 'sans-serif', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <div style={{ padding: '15px', background: '#063020', color: 'white', textAlign: 'center' }}>
         <h2 style={{ margin: 0 }}>{activeEntry?.name}</h2>
-        <small>HANDICAP: {activeEntry?.handicap} | DEDUCTION: {activeEntry?.deduction}</small>
+        <small>HCAP: {activeEntry?.handicap} | DEDUCTION: {activeEntry?.deduction}</small>
       </div>
-
       {!showSummary ? (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-          <div style={{ fontSize: '20px', fontWeight: '800' }}>HOLE {currentHole + 1} (Par {courseData[currentHole].par})</div>
+          <div style={{ fontSize: '20px', fontWeight: '800' }}>HOLE {currentHole + 1}</div>
           <div style={{ fontSize: '100px', fontWeight: '900' }}>{scores[currentHole] === 0 ? "X" : scores[currentHole]}</div>
           <div style={{ display: 'flex', gap: '20px' }}>
-            <button onClick={() => { const n = [...scores]; if (n[currentHole] > 1) n[currentHole]--; setScores(n); }} style={{ padding: '20px 40px', fontSize: '30px', borderRadius: '15px' }}>-</button>
-            <button onClick={() => { const n = [...scores]; n[currentHole]++; setScores(n); }} style={{ padding: '20px 40px', fontSize: '30px', borderRadius: '15px', background: '#10b981', color: 'white' }}>+</button>
+            <button onClick={() => { const n = [...scores]; if (n[currentHole] > 1) n[currentHole]--; setScores(n); }} style={{ padding: '20px 40px', fontSize: '30px' }}>-</button>
+            <button onClick={() => { const n = [...scores]; n[currentHole]++; setScores(n); }} style={{ padding: '20px 40px', fontSize: '30px', background: '#10b981', color: 'white' }}>+</button>
           </div>
           <div style={{ marginTop: '40px', width: '100%', display: 'flex', gap: '10px', padding: '0 20px' }}>
             <button onClick={() => currentHole > 0 && setCurrentHole(currentHole - 1)} style={{ flex: 1, padding: '15px' }}>PREV</button>
-            <button onClick={() => currentHole < 17 ? setCurrentHole(currentHole + 1) : setShowSummary(true)} style={{ flex: 2, padding: '15px', background: '#063020', color: 'white' }}>{currentHole < 17 ? "NEXT" : "SUMMARY"}</button>
+            <button onClick={() => currentHole < 17 ? setCurrentHole(currentHole + 1) : setShowSummary(true)} style={{ flex: 2, padding: '15px', background: '#063020', color: 'white' }}>NEXT</button>
           </div>
         </div>
       ) : (
-        <div style={{ padding: '20px', overflowY: 'auto' }}>
-          <h3>Review Scorecard</h3>
+        <div style={{ padding: '20px' }}>
+          <h3>Review</h3>
           <div style={{ fontSize: '30px', fontWeight: '900', color: '#10b981' }}>TOTAL: {getTotals()} PTS</div>
-          {!user.isAdmin && (
+          {!user?.isAdmin && (
             <select onChange={(e) => setVerifierName(e.target.value)} style={{ width: '100%', padding: '15px', margin: '15px 0' }}>
               <option value="">Select Verifier</option>
-              {allPlayers.filter(p => p.name !== user.name).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+              {allPlayers.filter(p => p.name !== user?.name).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
             </select>
           )}
-          <button onClick={submitCard} style={{ width: '100%', padding: '20px', background: '#10b981', color: 'white', fontWeight: '900', borderRadius: '15px' }}>SUBMIT CARD</button>
-          <button onClick={() => setShowSummary(false)} style={{ width: '100%', marginTop: '10px', padding: '10px' }}>EDIT SCORES</button>
+          <button onClick={submitCard} style={{ width: '100%', padding: '20px', background: '#10b981', color: 'white', fontWeight: '900' }}>SUBMIT</button>
+          <button onClick={() => setShowSummary(false)} style={{ width: '100%', marginTop: '10px' }}>EDIT</button>
         </div>
       )}
     </div>
