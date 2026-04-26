@@ -18,20 +18,18 @@ export default function App() {
   const [scores, setScores] = useState(() => JSON.parse(localStorage.getItem('egs_scores')) || courseData.map(h => h.par));
   const [loginCode, setLoginCode] = useState("");
   const [allPlayers, setAllPlayers] = useState([]);
-  const [rounds, setRounds] = useState([]); // For Admin View
+  const [rounds, setRounds] = useState([]);
   const [verifierName, setVerifierName] = useState("");
   const [showSummary, setShowSummary] = useState(false);
-  const [adminView, setAdminView] = useState('menu'); // 'menu', 'players', 'results'
+  const [adminTab, setAdminTab] = useState('codes'); // 'codes' or 'leaderboard'
 
   const handleLogout = useCallback(() => { localStorage.clear(); window.location.reload(); }, []);
 
-  const loadSocietyData = useCallback(async () => {
-    try {
-      const { data: users } = await supabase.from('users').select('*').order('name');
-      const { data: r } = await supabase.from('rounds').select('*').order('created_at', { ascending: false });
-      setAllPlayers(users || []);
-      setRounds(r || []);
-    } catch (e) { console.error(e); }
+  const loadData = useCallback(async () => {
+    const { data: u } = await supabase.from('users').select('*').order('name');
+    const { data: r } = await supabase.from('rounds').select('*').order('total_points', { ascending: false });
+    setAllPlayers(u || []);
+    setRounds(r || []);
   }, []);
 
   useEffect(() => {
@@ -39,103 +37,109 @@ export default function App() {
     localStorage.setItem('egs_player', JSON.stringify(player));
     localStorage.setItem('egs_currentHole', currentHole);
     localStorage.setItem('egs_scores', JSON.stringify(scores));
-    if (isLoggedIn) loadSocietyData();
-  }, [isLoggedIn, player, currentHole, scores, loadSocietyData]);
+    if (isLoggedIn) loadData();
+  }, [isLoggedIn, player, currentHole, scores, loadData]);
 
   const handleLogin = async () => {
     const { data } = await supabase.from('users').select('*').eq('access_code', loginCode).single();
     if (data) { 
-      const pData = { name: data.name, handicap: data.handicap, deduction: data.deduction || 0, isAdmin: data.show_leaderboard === true };
-      setPlayer(pData); 
+      setPlayer({ ...data, isAdmin: data.show_leaderboard === true }); 
       setIsLoggedIn(true); 
     } else { alert("Login failed."); }
   };
 
-  const updateDeduction = async (id, val) => {
-    await supabase.from('users').update({ deduction: parseInt(val) || 0 }).eq('id', id);
-    loadSocietyData();
-  };
-
-  const calcPoints = (s, p, si) => {
+  const calcPoints = (s, p, si, hcap) => {
     if (s === 0) return 0;
-    const pops = Math.floor(player.handicap / 18) + (player.handicap % 18 >= si ? 1 : 0);
+    const pops = Math.floor(hcap / 18) + (hcap % 18 >= si ? 1 : 0);
     return Math.max(0, p - (s - pops) + 2);
   };
 
-  const f9Points = scores.slice(0, 9).reduce((acc, s, i) => acc + calcPoints(s, courseData[i].par, courseData[i].si), 0);
-  const b9Points = scores.slice(9, 18).reduce((acc, s, i) => acc + calcPoints(s, courseData[i + 9].par, courseData[i + 9].si), 0);
-  const finalScore = (f9Points + b9Points) - (Number(player.deduction) || 0);
+  const getF9 = (sArr, hcap) => sArr.slice(0, 9).reduce((acc, s, i) => acc + calcPoints(s, courseData[i].par, courseData[i].si, hcap), 0);
+  const getB9 = (sArr, hcap) => sArr.slice(9, 18).reduce((acc, s, i) => acc + calcPoints(s, courseData[i+9].par, courseData[i+9].si, hcap), 0);
+  
+  const f9Pts = getF9(scores, player.handicap);
+  const b9Pts = getB9(scores, player.handicap);
+  const finalScore = (f9Pts + b9Pts) - (player.deduction || 0);
 
   const handleSubmitScore = async () => {
-    if (!verifierName && !player.isAdmin) return alert("Select Attester.");
+    if (!verifierName) return alert("Select Attester.");
     const { error } = await supabase.from('rounds').insert([{
       player_name: player.name,
       handicap: player.handicap,
       total_points: finalScore,
-      verifier: player.isAdmin ? "ADMIN_PROXY" : verifierName,
+      verifier: verifierName,
       scores: scores,
+      f9: f9Pts,
+      b9: b9Pts,
       created_at: new Date().toISOString()
     }]);
     if (!error) { alert("Submitted!"); handleLogout(); }
   };
 
-  const ScoreTable = ({ startIndex }) => (
-    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
-      <tbody>
-        {courseData.slice(startIndex, startIndex + 9).map((h, i) => {
-          const idx = startIndex + i;
-          return (
-            <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
-              <td style={{ fontWeight: '800', padding: '1px 0', background: '#f8f9fa', fontSize: '11px', width: '20%' }}>{idx + 1}</td>
-              <td style={{ fontWeight: '900', fontSize: '18px', width: '40%' }}>{scores[idx] === 0 ? 'X' : scores[idx]}</td>
-              <td style={{ fontWeight: '900', color: '#10b981', fontSize: '18px', width: '40%' }}>{calcPoints(scores[idx], h.par, h.si)}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+  // Helper for Category Filter
+  const getCat = (hcap) => {
+    if (hcap <= 9) return 1;
+    if (hcap <= 18) return 2;
+    if (hcap <= 27) return 3;
+    return 4;
+  };
+
+  if (!isLoggedIn) return (
+    <div style={{ backgroundColor: '#063020', height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '30px' }}>
+      <h1 style={{ color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '45px' }}>LOGIN</h1>
+      <input type="text" value={loginCode} onChange={e => setLoginCode(e.target.value)} placeholder="000" style={{ padding: '20px', fontSize: '30px', textAlign: 'center', borderRadius: '15px', marginBottom: '15px', border: 'none' }} />
+      <button onClick={handleLogin} style={{ padding: '20px', backgroundColor: '#C9A66B', color: 'white', border: 'none', borderRadius: '15px', fontWeight: '900', fontSize: '24px' }}>ENTER</button>
+    </div>
   );
 
-  if (!isLoggedIn) {
-    return (
-      <div style={{ backgroundColor: '#063020', height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '30px' }}>
-        <h1 style={{ color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '45px' }}>LOGIN</h1>
-        <input type="text" value={loginCode} onChange={e => setLoginCode(e.target.value)} placeholder="000" style={{ padding: '20px', fontSize: '30px', textAlign: 'center', borderRadius: '15px', marginBottom: '15px', border: 'none' }} />
-        <button onClick={handleLogin} style={{ padding: '20px', backgroundColor: '#C9A66B', color: 'white', border: 'none', borderRadius: '15px', fontWeight: '900', fontSize: '24px' }}>ENTER</button>
-      </div>
-    );
-  }
-
-  // --- ADMIN VIEW (Kept Clean and Isolated) ---
-  if (player.isAdmin && !showSummary && adminView !== 'scoring') {
-    return (
-      <div style={{ padding: '20px', backgroundColor: '#f8f9fa', minHeight: '100vh', fontFamily: 'sans-serif' }}>
-        <h2 style={{ color: '#063020', fontWeight: '900' }}>ADMIN: {player.name}</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
-          <button onClick={() => setAdminView('players')} style={{ padding: '15px', background: '#063020', color: 'white', fontWeight: '800', borderRadius: '10px', border: 'none' }}>DEDUCTIONS</button>
-          <button onClick={() => setAdminView('results')} style={{ padding: '15px', background: '#C9A66B', color: 'white', fontWeight: '800', borderRadius: '10px', border: 'none' }}>RESULTS</button>
+  // --- ADMIN VIEW ---
+  if (player.isAdmin) return (
+    <div style={{ backgroundColor: '#f4f4f4', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+      <div style={{ background: '#063020', color: 'white', padding: '20px', textAlign: 'center' }}>
+        <h2 style={{ margin: 0 }}>SOCIETY ADMIN</h2>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' }}>
+          <button onClick={() => setAdminTab('codes')} style={{ padding: '10px', background: adminTab === 'codes' ? '#C9A66B' : 'white', color: adminTab === 'codes' ? 'white' : 'black', border: 'none', borderRadius: '5px', fontWeight: '800' }}>ACCESS CODES</button>
+          <button onClick={() => setAdminTab('leaderboard')} style={{ padding: '10px', background: adminTab === 'leaderboard' ? '#C9A66B' : 'white', color: adminTab === 'leaderboard' ? 'white' : 'black', border: 'none', borderRadius: '5px', fontWeight: '800' }}>LEADERBOARD</button>
+          <button onClick={handleLogout} style={{ padding: '10px', background: '#e63946', color: 'white', border: 'none', borderRadius: '5px' }}>OUT</button>
         </div>
-        {adminView === 'players' && allPlayers.map(p => (
-          <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: 'white', borderRadius: '10px', marginBottom: '8px', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <span style={{fontWeight:'700'}}>{p.name}</span>
-            <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
-              <input type="number" defaultValue={p.deduction} onBlur={(e) => updateDeduction(p.id, e.target.value)} style={{ width: '40px', padding:'5px', textAlign:'center' }} />
-              <button onClick={() => { setPlayer({...p, isAdmin:true}); setScores(courseData.map(h=>h.par)); setAdminView('scoring'); }} style={{ background: '#10b981', color: 'white', border: 'none', borderRadius: '5px', padding: '5px 10px' }}>SCORE</button>
-            </div>
-          </div>
-        ))}
-        {adminView === 'results' && rounds.map(r => (
-          <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', borderBottom: '1px solid #ddd' }}>
-            <span>{r.player_name}: <b>{r.total_points}</b></span>
-            <button onClick={async () => { if(window.confirm("Delete?")){ await supabase.from('rounds').delete().eq('id', r.id); loadSocietyData(); }}} style={{ color: 'red', border: 'none', background: 'none' }}>DEL</button>
-          </div>
-        ))}
-        <button onClick={handleLogout} style={{ width: '100%', marginTop: '20px', padding: '15px', background: '#333', color: 'white', borderRadius: '10px', border: 'none' }}>LOGOUT</button>
       </div>
-    );
-  }
 
-  // --- MAIN SCORECARD UI (YOUR ORIGINAL GRAPHICS) ---
+      <div style={{ padding: '15px' }}>
+        {adminTab === 'codes' ? (
+          <div>
+            <h3 style={{ borderBottom: '2px solid #063020' }}>Player Directory</h3>
+            {allPlayers.map(p => (
+              <div key={p.id} style={{ background: 'white', padding: '12px', marginBottom: '5px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontWeight: '700' }}>{p.name}</span>
+                <span style={{ color: '#C9A66B', fontWeight: '900', fontSize: '20px' }}>{p.access_code}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div>
+            <h3 style={{ borderBottom: '2px solid #063020' }}>Top Overall</h3>
+            {rounds.slice(0, 3).map((r, i) => (
+               <div key={r.id} style={{ background: '#fff', padding: '10px', marginBottom: '5px', borderRadius: '8px', borderLeft: '5px solid #C9A66B' }}>
+                 <b>{i + 1}. {r.player_name}</b> — {r.total_points} pts <small>(F9: {r.f9} B9: {r.b9})</small>
+               </div>
+            ))}
+
+            <h3 style={{ borderBottom: '2px solid #063020', marginTop: '20px' }}>By Category</h3>
+            {[1, 2, 3, 4].map(cat => (
+              <div key={cat} style={{ marginBottom: '15px' }}>
+                <div style={{ fontSize: '12px', fontWeight: '800' }}>CATEGORY {cat}</div>
+                {rounds.filter(r => getCat(r.handicap) === cat).slice(0, 1).map(r => (
+                  <div key={r.id} style={{ background: '#d1fae5', padding: '8px', borderRadius: '5px' }}>Winner: {r.player_name} ({r.total_points} pts)</div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // --- STANDARD SCORECARD (PLAYER VIEW) ---
   return (
     <div style={{ backgroundColor: '#ffffff', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'sans-serif' }}>
       {!showSummary ? (
@@ -144,14 +148,16 @@ export default function App() {
             <div style={{ fontSize: '34px', fontWeight: '900', lineHeight: '1.1' }}>{player.name.toUpperCase()}</div>
             <div style={{ fontSize: '24px', fontWeight: '800', color: '#C9A66B' }}>HCAP: {player.handicap}</div>
           </div>
+          {/* HOLE INFO */}
           <div style={{ display: 'flex', backgroundColor: '#F1F3F5', borderBottom: '2px solid #DEE2E6', alignItems: 'center' }}>
-              <div style={{ flex: 1.2, textAlign: 'center', padding: '4px 0', borderRight: '2px solid #DEE2E6' }}>
-                  <div style={{ color: '#000', fontWeight: '900', fontSize: '18px' }}>HOLE</div>
-                  <div style={{ backgroundColor: '#FFD700', margin: '2px auto', width: '55px', height: '55px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', fontWeight: '900' }}>{currentHole + 1}</div>
-              </div>
-              <div style={{ flex: 1, textAlign: 'center' }}><div style={{ color: '#000', fontWeight: '900', fontSize: '16px' }}>PAR</div><div style={{ fontSize: '45px', fontWeight: '900' }}>{courseData[currentHole].par}</div></div>
-              <div style={{ flex: 1, textAlign: 'center' }}><div style={{ color: '#000', fontWeight: '900', fontSize: '16px' }}>S.I.</div><div style={{ fontSize: '45px', fontWeight: '900' }}>{courseData[currentHole].si}</div></div>
+            <div style={{ flex: 1.2, textAlign: 'center', padding: '4px 0', borderRight: '2px solid #DEE2E6' }}>
+                <div style={{ color: '#000', fontWeight: '900', fontSize: '18px' }}>HOLE</div>
+                <div style={{ backgroundColor: '#FFD700', margin: '2px auto', width: '55px', height: '55px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', fontWeight: '900' }}>{currentHole + 1}</div>
+            </div>
+            <div style={{ flex: 1, textAlign: 'center' }}><div style={{ color: '#000', fontWeight: '900', fontSize: '16px' }}>PAR</div><div style={{ fontSize: '45px', fontWeight: '900' }}>{courseData[currentHole].par}</div></div>
+            <div style={{ flex: 1, textAlign: 'center' }}><div style={{ color: '#000', fontWeight: '900', fontSize: '16px' }}>S.I.</div><div style={{ fontSize: '45px', fontWeight: '900' }}>{courseData[currentHole].si}</div></div>
           </div>
+          {/* STROKE SELECTOR */}
           <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                 <button onClick={() => { if(scores[currentHole] > 1){const n=[...scores]; n[currentHole]--; setScores(n);}}} style={{ width: '80px', height: '100px', borderRadius: '20px', backgroundColor: '#e63946', color: 'white', border: 'none', fontSize: '60px', fontWeight: '900' }}>-</button>
@@ -165,15 +171,16 @@ export default function App() {
                 </div>
              </div>
           </div>
+          {/* NAV */}
           <div style={{ borderTop: '3px solid #F1F3F5', padding: '8px 15px' }}>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                 <div style={{ flex: 1, textAlign: 'center', padding: '5px', backgroundColor: '#d1fae5', borderRadius: '12px', border: '2px solid #10b981' }}>
                     <div style={{ fontWeight: '900', fontSize: '14px' }}>PTS</div>
-                    <div style={{ fontSize: '40px', fontWeight: '900', color: '#064e3b' }}>{calcPoints(scores[currentHole], courseData[currentHole].par, courseData[currentHole].si)}</div>
+                    <div style={{ fontSize: '40px', fontWeight: '900', color: '#064e3b' }}>{calcPoints(scores[currentHole], courseData[currentHole].par, courseData[currentHole].si, player.handicap)}</div>
                 </div>
                 <div style={{ flex: 1, textAlign: 'center', padding: '5px', backgroundColor: '#d1fae5', borderRadius: '12px', border: '2px solid #10b981' }}>
                     <div style={{ fontWeight: '900', fontSize: '14px' }}>TOTAL</div>
-                    <div style={{ fontSize: '40px', fontWeight: '900', color: '#064e3b' }}>{f9Points + b9Points}</div>
+                    <div style={{ fontSize: '40px', fontWeight: '900', color: '#064e3b' }}>{f9Pts + b9Pts}</div>
                 </div>
             </div>
             <div style={{ display: 'flex', gap: '8px', paddingBottom: '8px' }}>
@@ -185,41 +192,19 @@ export default function App() {
           </div>
         </div>
       ) : (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', padding: '2px' }}>
-          <div style={{ display: 'flex', gap: '4px' }}>
-              <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '6px', overflow: 'hidden' }}>
-                  <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '18px', padding: '6px' }}>FRONT 9</div>
-                  <ScoreTable startIndex={0} />
-                  <div style={{ padding: '8px 0', textAlign: 'center', background: '#f1f3f5', fontSize: '28px', fontWeight: '900', color: '#063020', borderTop: '1px solid #ddd' }}>{f9Points} PTS</div>
-              </div>
-              <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '6px', overflow: 'hidden' }}>
-                  <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '18px', padding: '6px' }}>BACK 9</div>
-                  <ScoreTable startIndex={9} />
-                  <div style={{ padding: '8px 0', textAlign: 'center', background: '#f1f3f5', fontSize: '28px', fontWeight: '900', color: '#063020', borderTop: '1px solid #ddd' }}>{b9Points} PTS</div>
-              </div>
-          </div>
-          <div style={{ display: 'flex', gap: '5px', padding: '5px', alignItems: 'center' }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '10px', fontWeight: '900' }}>ATTESTER</label>
-                <select value={verifierName} onChange={(e) => setVerifierName(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', fontSize: '16px', border: '2px solid #063020' }}>
-                  <option value="">-- SELECT --</option>
-                  {allPlayers.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
-                </select>
-              </div>
-              <div style={{ textAlign: 'center', padding: '2px 10px', backgroundColor: '#fff5f5', borderRadius: '8px', border: '1px solid #feb2b2' }}>
-                <div style={{ fontSize: '10px', fontWeight: '900', color: '#c53030' }}>DEDUCT</div>
-                <div style={{ fontSize: '24px', fontWeight: '900', color: '#c53030' }}>-{player.deduction || 0}</div>
-              </div>
-          </div>
-          <div style={{ margin: '5px', background: '#d1fae5', padding: '8px', borderRadius: '12px', border: '3px solid #10b981', display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: '6px' }}>
-              <span style={{ fontSize: '18px', fontWeight: '900', color: '#064e3b' }}>FINAL:</span>
-              <span style={{ fontSize: '38px', fontWeight: '900', color: '#064e3b', lineHeight: '1' }}>{finalScore}</span>
-              <span style={{ fontSize: '18px', fontWeight: '900', color: '#064e3b' }}>PTS</span>
-          </div>
-          <div style={{ display: 'flex', gap: '5px', padding: '5px' }}>
-            <button onClick={() => setShowSummary(false)} style={{ flex: 1, padding: '15px', borderRadius: '10px', border: 'none', background: '#E9ECEF', fontWeight: '900' }}>EDIT</button>
-            <button onClick={handleSubmitScore} style={{ flex: 2, padding: '15px', borderRadius: '10px', border: 'none', background: '#10b981', color: 'white', fontWeight: '900', fontSize: '20px' }}>SUBMIT CARD</button>
-          </div>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', padding: '10px', overflowY: 'auto' }}>
+           <h2 style={{ textAlign: 'center', margin: '10px 0' }}>REVIEW SCORECARD</h2>
+           <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '20px' }}>
+              <div style={{ textAlign: 'center' }}><b>FRONT 9</b><div style={{fontSize:'24px'}}>{f9Pts}</div></div>
+              <div style={{ textAlign: 'center' }}><b>BACK 9</b><div style={{fontSize:'24px'}}>{b9Pts}</div></div>
+              <div style={{ textAlign: 'center' }}><b>FINAL</b><div style={{fontSize:'24px', color:'#10b981'}}>{finalScore}</div></div>
+           </div>
+           <select onChange={(e) => setVerifierName(e.target.value)} style={{ width: '100%', padding: '15px', borderRadius: '10px', marginBottom: '10px' }}>
+              <option value="">SELECT ATTESTER</option>
+              {allPlayers.filter(p => p.name !== player.name).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+           </select>
+           <button onClick={handleSubmitScore} style={{ width: '100%', padding: '20px', background: '#10b981', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '900' }}>SUBMIT CARD</button>
+           <button onClick={() => setShowSummary(false)} style={{ width: '100%', marginTop: '10px', padding: '10px', background: 'none', border: 'none', color: '#666' }}>Go Back</button>
         </div>
       )}
     </div>
