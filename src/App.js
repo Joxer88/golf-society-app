@@ -96,7 +96,6 @@ export default function App() {
   return (
     <div style={{ backgroundColor: '#ffffff', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'sans-serif' }}>
       {!showSummary ? (
-        /* INPUT SCREEN */
         <div style={{ width: '100%', maxWidth: '450px', margin: '0 auto', display: 'flex', flexDirection: 'column', height: '100%' }}>
           <div style={{ padding: '10px 5px', backgroundColor: '#063020', color: 'white', textAlign: 'center' }}>
             <div style={{ fontSize: '34px', fontWeight: '900', lineHeight: '1.1' }}>{player.name.toUpperCase()}</div>
@@ -141,18 +140,17 @@ export default function App() {
           </div>
         </div>
       ) : (
-        /* SUMMARY SCREEN */
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', padding: '2px' }}>
           <div style={{ display: 'flex', gap: '4px' }}>
               <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '6px', overflow: 'hidden' }}>
                   <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '18px', padding: '6px' }}>FRONT 9</div>
                   <ScoreTable startIndex={0} />
-                  <div style={{ padding: '8px 0', textAlign: 'center', background: '#f1f3f5', fontSize: '36px', fontWeight: '900', color: '#063020', borderTop: '1px solid #ddd' }}>{f9Points}</div>
+                  <div style={{ padding: '8px 0', textAlign: 'center', background: '#f1f3f5', fontSize: '30px', fontWeight: '900', color: '#063020', borderTop: '1px solid #ddd' }}>{f9Points} PTS</div>
               </div>
               <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '6px', overflow: 'hidden' }}>
                   <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '18px', padding: '6px' }}>BACK 9</div>
                   <ScoreTable startIndex={9} />
-                  <div style={{ padding: '8px 0', textAlign: 'center', background: '#f1f3f5', fontSize: '36px', fontWeight: '900', color: '#063020', borderTop: '1px solid #ddd' }}>{b9Points}</div>
+                  <div style={{ padding: '8px 0', textAlign: 'center', background: '#f1f3f5', fontSize: '30px', fontWeight: '900', color: '#063020', borderTop: '1px solid #ddd' }}>{b9Points} PTS</div>
               </div>
           </div>
 
@@ -170,7 +168,6 @@ export default function App() {
               </div>
           </div>
 
-          {/* COMPACT FINAL SCORE PILL */}
           <div style={{ 
             margin: '5px', 
             background: '#d1fae5', 
@@ -180,10 +177,11 @@ export default function App() {
             display: 'flex', 
             justifyContent: 'center', 
             alignItems: 'baseline',
-            gap: '10px'
+            gap: '8px'
           }}>
-             <span style={{ fontSize: '22px', fontWeight: '900', color: '#064e3b' }}>FINAL SCORE:</span>
-             <span style={{ fontSize: '44px', fontWeight: '900', color: '#064e3b', lineHeight: '1' }}>{finalScore}</span>
+             <span style={{ fontSize: '20px', fontWeight: '900', color: '#064e3b' }}>FINAL:</span>
+             <span style={{ fontSize: '40px', fontWeight: '900', color: '#064e3b', lineHeight: '1' }}>{finalScore}</span>
+             <span style={{ fontSize: '20px', fontWeight: '900', color: '#064e3b' }}>PTS</span>
           </div>
 
           <div style={{ display: 'flex', gap: '5px', padding: '5px' }}>
