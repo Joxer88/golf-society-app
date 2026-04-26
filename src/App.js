@@ -48,10 +48,12 @@ export default function App() {
     return Math.max(0, p - (s - pops) + 2);
   };
 
-  const totalPoints = scores.reduce((acc, s, i) => acc + calcPoints(s, courseData[i].par, courseData[i].si), 0);
+  const f9Points = scores.slice(0, 9).reduce((acc, s, i) => acc + calcPoints(s, courseData[i].par, courseData[i].si), 0);
+  const b9Points = scores.slice(9, 18).reduce((acc, s, i) => acc + calcPoints(s, courseData[i + 9].par, courseData[i + 9].si), 0);
+  const totalPoints = f9Points + b9Points;
 
   const handleSubmitScore = async () => {
-    if (!verifierName) return alert("Please select an Attester/Verifier.");
+    if (!verifierName) return alert("Please select an Attester.");
     const { error } = await supabase.from('rounds').insert([{
       player_name: player.name,
       handicap: player.handicap,
@@ -61,7 +63,7 @@ export default function App() {
       date: new Date().toISOString()
     }]);
     if (!error) { alert("Score Submitted!"); handleLogout(); }
-    else { alert("Error submitting score."); }
+    else { alert("Error submitting."); }
   };
 
   if (!isLoggedIn) {
@@ -73,6 +75,28 @@ export default function App() {
       </div>
     );
   }
+
+  const ScoreTable = ({ startIndex }) => (
+    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '18px' }}>
+      <thead>
+        <tr style={{ borderBottom: '2px solid #063020', background: '#f1f3f5' }}>
+          <th style={{ padding: '4px' }}>H</th><th style={{ padding: '4px' }}>S</th><th style={{ padding: '4px' }}>P</th>
+        </tr>
+      </thead>
+      <tbody>
+        {courseData.slice(startIndex, startIndex + 9).map((h, i) => {
+          const idx = startIndex + i;
+          return (
+            <tr key={idx} style={{ borderBottom: '1px solid #ddd' }}>
+              <td style={{ fontWeight: '800', padding: '6px 0', background: '#f8f9fa', fontSize: '16px' }}>{idx + 1}</td>
+              <td style={{ fontWeight: '900', fontSize: '22px' }}>{scores[idx] === 0 ? 'X' : scores[idx]}</td>
+              <td style={{ fontWeight: '900', color: '#10b981', fontSize: '22px' }}>{calcPoints(scores[idx], h.par, h.si)}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
 
   return (
     <div style={{ backgroundColor: '#ffffff', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'sans-serif' }}>
@@ -87,9 +111,7 @@ export default function App() {
           <div style={{ display: 'flex', backgroundColor: '#F1F3F5', borderBottom: '2px solid #DEE2E6', alignItems: 'center' }}>
               <div style={{ flex: 1.2, textAlign: 'center', padding: '4px 0', borderRight: '2px solid #DEE2E6', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <div style={{ color: '#000', fontWeight: '900', fontSize: '18px' }}>HOLE</div>
-                  <div style={{ backgroundColor: '#FFD700', color: '#000', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '45px', fontWeight: '900', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', margin: '2px 0' }}>
-                    {currentHole + 1}
-                  </div>
+                  <div style={{ backgroundColor: '#FFD700', color: '#000', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '45px', fontWeight: '900', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', margin: '2px 0' }}>{currentHole + 1}</div>
               </div>
               <div style={{ flex: 1, textAlign: 'center', padding: '4px 0', borderRight: '2px solid #DEE2E6' }}>
                   <div style={{ color: '#000', fontWeight: '900', fontSize: '18px' }}>PAR</div>
@@ -118,64 +140,52 @@ export default function App() {
           <div style={{ borderTop: '3px solid #F1F3F5', padding: '5px 15px' }}>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                 <div style={{ flex: 1, textAlign: 'center', padding: '5px', backgroundColor: '#d1fae5', borderRadius: '12px', border: '2px solid #10b981' }}>
-                    <div style={{ fontWeight: '900', color: '#064e3b', fontSize: '18px' }}>POINTS</div>
-                    <div style={{ fontSize: '50px', fontWeight: '900', lineHeight: '1', color: '#064e3b' }}>{calcPoints(scores[currentHole], courseData[currentHole].par, courseData[currentHole].si)}</div>
+                    <div style={{ fontWeight: '900', fontSize: '16px' }}>POINTS</div>
+                    <div style={{ fontSize: '48px', fontWeight: '900', lineHeight: '1', color: '#064e3b' }}>{calcPoints(scores[currentHole], courseData[currentHole].par, courseData[currentHole].si)}</div>
                 </div>
                 <div style={{ flex: 1, textAlign: 'center', padding: '5px', backgroundColor: '#d1fae5', borderRadius: '12px', border: '2px solid #10b981' }}>
-                    <div style={{ fontWeight: '900', color: '#064e3b', fontSize: '18px' }}>TOTAL</div>
-                    <div style={{ fontSize: '50px', fontWeight: '900', lineHeight: '1', color: '#064e3b' }}>{totalPoints}</div>
+                    <div style={{ fontWeight: '900', fontSize: '16px' }}>TOTAL</div>
+                    <div style={{ fontSize: '48px', fontWeight: '900', lineHeight: '1', color: '#064e3b' }}>{totalPoints}</div>
                 </div>
             </div>
-
             <div style={{ display: 'flex', gap: '8px', paddingBottom: '8px' }}>
-                <button onClick={() => currentHole > 0 && setCurrentHole(currentHole - 1)} style={{ flex: 1, padding: '20px', borderRadius: '15px', background: '#E9ECEF', border: 'none', fontWeight: '900', color: '#495057', fontSize: '22px' }}>PREV</button>
-                <button onClick={() => currentHole < 17 ? setCurrentHole(currentHole+1) : setShowSummary(true)} style={{ flex: 2, padding: '20px', borderRadius: '15px', background: '#063020', color: 'white', border: 'none', fontWeight: '900', fontSize: '24px' }}>NEXT</button>
+                <button onClick={() => currentHole > 0 && setCurrentHole(currentHole - 1)} style={{ flex: 1, padding: '18px', borderRadius: '15px', background: '#E9ECEF', border: 'none', fontWeight: '900', color: '#495057', fontSize: '20px' }}>PREV</button>
+                <button onClick={() => currentHole < 17 ? setCurrentHole(currentHole+1) : setShowSummary(true)} style={{ flex: 2, padding: '18px', borderRadius: '15px', background: '#063020', color: 'white', border: 'none', fontWeight: '900', fontSize: '22px' }}>NEXT</button>
             </div>
           </div>
         </div>
       ) : (
-        <div style={{ flex: 1, overflowY: 'auto', backgroundColor: '#F8F9FA', padding: '15px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-             <h2 style={{ fontSize: '30px', fontWeight: '900', color: '#063020', margin: '0' }}>ROUND SUMMARY</h2>
-             <div style={{ fontSize: '60px', fontWeight: '900', color: '#10b981' }}>{totalPoints} PTS</div>
+        <div style={{ flex: 1, overflowY: 'auto', backgroundColor: '#ffffff', padding: '5px' }}>
+          <div style={{ textAlign: 'center', padding: '10px 0', borderBottom: '2px solid #eee' }}>
+             <h2 style={{ fontSize: '22px', fontWeight: '900', margin: '0' }}>SCORECARD</h2>
+             <div style={{ fontSize: '38px', fontWeight: '900', color: '#10b981' }}>{totalPoints} TOTAL</div>
           </div>
 
-          <div style={{ backgroundColor: 'white', borderRadius: '15px', padding: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
-             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '14px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid #063020' }}>
-                    <th>HOLE</th><th>PAR</th><th>SI</th><th>SCR</th><th>PTS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {courseData.map((h, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid #eee', backgroundColor: i === currentHole ? '#fff9db' : 'transparent' }}>
-                      <td style={{ fontWeight: 'bold', padding: '5px' }}>{i+1}</td>
-                      <td>{h.par}</td>
-                      <td>{h.si}</td>
-                      <td style={{ fontWeight: '900' }}>{scores[i] === 0 ? 'X' : scores[i]}</td>
-                      <td style={{ fontWeight: '900', color: '#10b981' }}>{calcPoints(scores[i], h.par, h.si)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-             </table>
+          {/* SPLIT SCREEN TABLE */}
+          <div style={{ display: 'flex', gap: '5px', marginTop: '10px' }}>
+              <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
+                  <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '800', padding: '4px' }}>FRONT 9</div>
+                  <ScoreTable startIndex={0} />
+                  <div style={{ padding: '10px', background: '#d1fae5', textAlign: 'center', fontWeight: '900', fontSize: '20px' }}>F9: {f9Points}</div>
+              </div>
+              <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
+                  <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '800', padding: '4px' }}>BACK 9</div>
+                  <ScoreTable startIndex={9} />
+                  <div style={{ padding: '10px', background: '#d1fae5', textAlign: 'center', fontWeight: '900', fontSize: '20px' }}>B9: {b9Points}</div>
+              </div>
           </div>
 
-          <div style={{ padding: '20px', backgroundColor: 'white', borderRadius: '15px', marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontWeight: '900', marginBottom: '10px', fontSize: '18px' }}>ATTESTER / VERIFIER:</label>
-            <select 
-              value={verifierName} 
-              onChange={(e) => setVerifierName(e.target.value)} 
-              style={{ width: '100%', padding: '15px', borderRadius: '10px', fontSize: '18px', border: '2px solid #063020' }}
-            >
-              <option value="">-- SELECT PLAYER --</option>
+          <div style={{ marginTop: '15px', padding: '10px', background: '#f8f9fa', borderRadius: '12px' }}>
+            <label style={{ display: 'block', fontWeight: '900', marginBottom: '5px' }}>ATTESTER:</label>
+            <select value={verifierName} onChange={(e) => setVerifierName(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', fontSize: '18px', border: '2px solid #063020' }}>
+              <option value="">-- SELECT --</option>
               {allPlayers.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
             </select>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', paddingBottom: '30px' }}>
-            <button onClick={() => setShowSummary(false)} style={{ flex: 1, padding: '20px', borderRadius: '12px', border: 'none', background: '#E9ECEF', fontWeight: '900' }}>EDIT SCORES</button>
-            <button onClick={handleSubmitScore} style={{ flex: 2, padding: '20px', borderRadius: '12px', border: 'none', background: '#10b981', color: 'white', fontWeight: '900', fontSize: '18px' }}>SUBMIT CARD</button>
+          <div style={{ display: 'flex', gap: '10px', marginTop: '15px', paddingBottom: '30px' }}>
+            <button onClick={() => setShowSummary(false)} style={{ flex: 1, padding: '20px', borderRadius: '12px', border: 'none', background: '#E9ECEF', fontWeight: '900' }}>BACK</button>
+            <button onClick={handleSubmitScore} style={{ flex: 2, padding: '20px', borderRadius: '12px', border: 'none', background: '#10b981', color: 'white', fontWeight: '900', fontSize: '20px' }}>SUBMIT</button>
           </div>
         </div>
       )}
