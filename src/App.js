@@ -13,13 +13,12 @@ const courseData = [
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('egs_isLoggedIn') === 'true');
-  const [player, setPlayer] = useState(() => JSON.parse(localStorage.getItem('egs_player')) || { name: "", handicap: 0 });
+  const [player, setPlayer] = useState(() => JSON.parse(localStorage.getItem('egs_player')) || { name: "", handicap: 0, deduction: 0 });
   const [currentHole, setCurrentHole] = useState(() => parseInt(localStorage.getItem('egs_currentHole')) || 0);
   const [scores, setScores] = useState(() => JSON.parse(localStorage.getItem('egs_scores')) || courseData.map(h => h.par));
   const [loginCode, setLoginCode] = useState("");
   const [allPlayers, setAllPlayers] = useState([]);
   const [verifierName, setVerifierName] = useState("");
-  const [deduction, setDeduction] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
 
   const handleLogout = useCallback(() => { localStorage.clear(); window.location.reload(); }, []);
@@ -39,7 +38,11 @@ export default function App() {
 
   const handleLogin = async () => {
     const { data } = await supabase.from('users').select('*').eq('access_code', loginCode).single();
-    if (data) { setPlayer({ name: data.name, handicap: data.handicap }); setIsLoggedIn(true); } 
+    if (data) { 
+      // Assuming 'deduction' is a column in your Supabase 'users' table
+      setPlayer({ name: data.name, handicap: data.handicap, deduction: data.deduction || 0 }); 
+      setIsLoggedIn(true); 
+    } 
     else { alert("Invalid Code."); }
   };
 
@@ -51,7 +54,7 @@ export default function App() {
 
   const f9Points = scores.slice(0, 9).reduce((acc, s, i) => acc + calcPoints(s, courseData[i].par, courseData[i].si), 0);
   const b9Points = scores.slice(9, 18).reduce((acc, s, i) => acc + calcPoints(s, courseData[i + 9].par, courseData[i + 9].si), 0);
-  const finalScore = (f9Points + b9Points) - deduction;
+  const finalScore = (f9Points + b9Points) - player.deduction;
 
   const handleSubmitScore = async () => {
     if (!verifierName) return alert("Please select an Attester.");
@@ -67,6 +70,28 @@ export default function App() {
     else { alert("Error submitting."); }
   };
 
+  const ScoreTable = ({ startIndex }) => (
+    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
+      <thead>
+        <tr style={{ borderBottom: '1px solid #063020', background: '#f1f3f5' }}>
+          <th style={{ padding: '2px', fontSize: '12px' }}>H</th><th style={{ padding: '2px', fontSize: '12px' }}>S</th><th style={{ padding: '2px', fontSize: '12px' }}>P</th>
+        </tr>
+      </thead>
+      <tbody>
+        {courseData.slice(startIndex, startIndex + 9).map((h, i) => {
+          const idx = startIndex + i;
+          return (
+            <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
+              <td style={{ fontWeight: '800', padding: '2px 0', background: '#f8f9fa', fontSize: '14px' }}>{idx + 1}</td>
+              <td style={{ fontWeight: '900', fontSize: '18px' }}>{scores[idx] === 0 ? 'X' : scores[idx]}</td>
+              <td style={{ fontWeight: '900', color: '#10b981', fontSize: '18px' }}>{calcPoints(scores[idx], h.par, h.si)}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+
   if (!isLoggedIn) {
     return (
       <div style={{ backgroundColor: '#063020', height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '30px' }}>
@@ -77,32 +102,11 @@ export default function App() {
     );
   }
 
-  const ScoreTable = ({ startIndex }) => (
-    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '18px' }}>
-      <thead>
-        <tr style={{ borderBottom: '2px solid #063020', background: '#f1f3f5' }}>
-          <th style={{ padding: '2px' }}>H</th><th style={{ padding: '2px' }}>S</th><th style={{ padding: '2px' }}>P</th>
-        </tr>
-      </thead>
-      <tbody>
-        {courseData.slice(startIndex, startIndex + 9).map((h, i) => {
-          const idx = startIndex + i;
-          return (
-            <tr key={idx} style={{ borderBottom: '1px solid #ddd' }}>
-              <td style={{ fontWeight: '800', padding: '3px 0', background: '#f8f9fa', fontSize: '15px' }}>{idx + 1}</td>
-              <td style={{ fontWeight: '900', fontSize: '20px' }}>{scores[idx] === 0 ? 'X' : scores[idx]}</td>
-              <td style={{ fontWeight: '900', color: '#10b981', fontSize: '20px' }}>{calcPoints(scores[idx], h.par, h.si)}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  );
-
   return (
     <div style={{ backgroundColor: '#ffffff', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'sans-serif' }}>
       {!showSummary ? (
         <div style={{ width: '100%', maxWidth: '450px', margin: '0 auto', display: 'flex', flexDirection: 'column', height: '100%' }}>
+          {/* Main Scorer View Header, Stats, and Controls remain as previously designed */}
           <div style={{ padding: '10px 5px', backgroundColor: '#063020', color: 'white', textAlign: 'center' }}>
             <div style={{ fontSize: '34px', fontWeight: '900', lineHeight: '1.1' }}>{player.name.toUpperCase()}</div>
             <div style={{ fontSize: '24px', fontWeight: '800', color: '#C9A66B' }}>HCAP: {player.handicap}</div>
@@ -157,18 +161,20 @@ export default function App() {
       ) : (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', padding: '2px' }}>
           
-          <div style={{ display: 'flex', gap: '2px' }}>
+          <div style={{ display: 'flex', gap: '4px' }}>
               <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '4px' }}>
-                  <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '14px', padding: '2px' }}>FRONT 9: {f9Points}</div>
+                  <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '14px', padding: '4px' }}>FRONT 9</div>
                   <ScoreTable startIndex={0} />
+                  <div style={{ padding: '8px 0', textAlign: 'center', background: '#f1f3f5', fontSize: '24px', fontWeight: '900', color: '#063020' }}>{f9Points} PTS</div>
               </div>
               <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '4px' }}>
-                  <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '14px', padding: '2px' }}>BACK 9: {b9Points}</div>
+                  <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '14px', padding: '4px' }}>BACK 9</div>
                   <ScoreTable startIndex={9} />
+                  <div style={{ padding: '8px 0', textAlign: 'center', background: '#f1f3f5', fontSize: '24px', fontWeight: '900', color: '#063020' }}>{b9Points} PTS</div>
               </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '5px', padding: '5px' }}>
+          <div style={{ display: 'flex', gap: '5px', padding: '5px', alignItems: 'center' }}>
               <div style={{ flex: 1 }}>
                 <label style={{ fontSize: '12px', fontWeight: '900' }}>ATTESTER</label>
                 <select value={verifierName} onChange={(e) => setVerifierName(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', fontSize: '16px', border: '2px solid #063020' }}>
@@ -176,19 +182,19 @@ export default function App() {
                   {allPlayers.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
                 </select>
               </div>
-              <div style={{ width: '100px' }}>
-                <label style={{ fontSize: '12px', fontWeight: '900' }}>DEDUCT</label>
-                <input type="number" value={deduction} onChange={(e) => setDeduction(parseInt(e.target.value) || 0)} style={{ width: '100%', padding: '10px', borderRadius: '8px', fontSize: '16px', border: '2px solid #e63946', textAlign: 'center' }} />
+              <div style={{ textAlign: 'center', padding: '0 10px' }}>
+                <div style={{ fontSize: '12px', fontWeight: '900', color: '#e63946' }}>DEDUCTION</div>
+                <div style={{ fontSize: '28px', fontWeight: '900', color: '#e63946' }}>-{player.deduction}</div>
               </div>
           </div>
 
-          <div style={{ textAlign: 'center', background: '#d1fae5', padding: '5px', borderY: '1px solid #10b981' }}>
-             <span style={{ fontSize: '32px', fontWeight: '900', color: '#064e3b' }}>FINAL: {finalScore} PTS</span>
+          <div style={{ textAlign: 'center', background: '#d1fae5', padding: '8px', borderTop: '2px solid #10b981' }}>
+             <span style={{ fontSize: '38px', fontWeight: '900', color: '#064e3b' }}>FINAL: {finalScore} PTS</span>
           </div>
 
           <div style={{ display: 'flex', gap: '5px', padding: '5px' }}>
             <button onClick={() => setShowSummary(false)} style={{ flex: 1, padding: '15px', borderRadius: '10px', border: 'none', background: '#E9ECEF', fontWeight: '900' }}>EDIT</button>
-            <button onClick={handleSubmitScore} style={{ flex: 2, padding: '15px', borderRadius: '10px', border: 'none', background: '#10b981', color: 'white', fontWeight: '900', fontSize: '18px' }}>SUBMIT CARD</button>
+            <button onClick={handleSubmitScore} style={{ flex: 2, padding: '15px', borderRadius: '10px', border: 'none', background: '#10b981', color: 'white', fontWeight: '900', fontSize: '20px' }}>SUBMIT CARD</button>
           </div>
         </div>
       )}
