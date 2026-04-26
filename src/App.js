@@ -24,34 +24,44 @@ export default function App() {
   const [adminTab, setAdminTab] = useState('codes');
   const [isLocked, setIsLocked] = useState(false);
 
-  const handleLogout = useCallback(() => { localStorage.clear(); window.location.reload(); }, []);
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.replace(window.location.origin); 
+  };
 
   const loadData = useCallback(async () => {
-    const { data: u } = await supabase.from('users').select('*').order('name');
-    const { data: r } = await supabase.from('rounds').select('*').order('created_at', { ascending: false });
-    setAllPlayers(u || []);
-    setRounds(r || []);
-    if (player.name) {
-      const existing = r?.find(round => round.player_name === player.name);
-      if (existing) { 
-        setScores(existing.scores); 
-        setIsLocked(true); 
-        setShowSummary(true); 
+    try {
+      const { data: u } = await supabase.from('users').select('*').order('name');
+      const { data: r } = await supabase.from('rounds').select('*').order('created_at', { ascending: false });
+      setAllPlayers(u || []);
+      setRounds(r || []);
+      if (player.name) {
+        const existing = r?.find(round => round.player_name === player.name);
+        if (existing) { 
+          setScores(existing.scores); 
+          setIsLocked(true); 
+          setShowSummary(true); 
+        }
       }
-    }
+    } catch (e) { console.error(e); }
   }, [player.name]);
 
   useEffect(() => {
-    localStorage.setItem('egs_isLoggedIn', isLoggedIn);
-    localStorage.setItem('egs_player', JSON.stringify(player));
-    localStorage.setItem('egs_currentHole', currentHole);
-    localStorage.setItem('egs_scores', JSON.stringify(scores));
-    if (isLoggedIn) loadData();
+    if (isLoggedIn) {
+      localStorage.setItem('egs_isLoggedIn', 'true');
+      localStorage.setItem('egs_player', JSON.stringify(player));
+      localStorage.setItem('egs_currentHole', currentHole);
+      localStorage.setItem('egs_scores', JSON.stringify(scores));
+      loadData();
+    }
   }, [isLoggedIn, player, currentHole, scores, loadData]);
 
   const handleLogin = async () => {
     const { data } = await supabase.from('users').select('*').eq('access_code', loginCode.trim().toUpperCase()).single();
-    if (data) { setPlayer({ ...data, isAdmin: data.show_leaderboard === true }); setIsLoggedIn(true); } else { alert("Invalid Code"); }
+    if (data) { 
+      setPlayer({ ...data, isAdmin: data.show_leaderboard === true }); 
+      setIsLoggedIn(true); 
+    } else { alert("Invalid Code"); }
   };
 
   const calcPoints = (s, p, si, hcap) => {
@@ -60,17 +70,19 @@ export default function App() {
     return Math.max(0, p - (s - pops) + 2);
   };
 
+  // SCORE CALCULATIONS
   const f9Pts = scores.slice(0, 9).reduce((acc, s, i) => acc + calcPoints(s, courseData[i].par, courseData[i].si, player.handicap), 0);
   const b9Pts = scores.slice(9, 18).reduce((acc, s, i) => acc + calcPoints(s, courseData[i+9].par, courseData[i+9].si, player.handicap), 0);
-  const finalScore = (f9Pts + b9Pts) - (player.deduction || 0);
+  const rawTotal = f9Pts + b9Pts;
+  const finalScore = rawTotal - (player.deduction || 0);
 
   const ScoreTable = ({ start }) => (
-    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '14px' }}>
+    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '13px' }}>
       <thead><tr style={{ background: '#eee' }}><th>H</th><th>S</th><th>P</th></tr></thead>
       <tbody>
         {courseData.slice(start, start + 9).map((h, i) => (
           <tr key={start + i} style={{ borderBottom: '1px solid #ddd' }}>
-            <td style={{ padding: '8px', fontWeight: 'bold' }}>{start + i + 1}</td>
+            <td style={{ padding: '6px', fontWeight: 'bold' }}>{start + i + 1}</td>
             <td>{scores[start + i] === 0 ? 'X' : scores[start + i]}</td>
             <td style={{ color: '#2d9a83', fontWeight: '900' }}>{calcPoints(scores[start + i], h.par, h.si, player.handicap)}</td>
           </tr>
@@ -122,42 +134,50 @@ export default function App() {
             <div style={{ flex: 1, textAlign: 'center', padding: '10px' }}><div style={{ fontSize: '10px', fontWeight: '800' }}>S.I.</div><div style={{ fontSize: '22px', fontWeight: '900' }}>{courseData[currentHole].si}</div></div>
           </div>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '40px' }}>
-              <button onClick={() => {if(scores[currentHole]>1){const n=[...scores]; n[currentHole]--; setScores(n);}}} style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#ef4444', color: 'white', border: 'none', fontSize: '50px', fontWeight: '900' }}>-</button>
-              <div style={{ textAlign: 'center' }}><div style={{ fontSize: '120px', fontWeight: '900', color: '#063020', lineHeight: '1' }}>{scores[currentHole] === 0 ? "X" : scores[currentHole]}</div><div style={{ fontSize: '14px', fontWeight: '800' }}>STROKES</div></div>
-              <button onClick={() => {const n=[...scores]; if(n[currentHole]===0) n[currentHole]=courseData[currentHole].par; else n[currentHole]++; setScores(n);}} style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#2d9a83', color: 'white', border: 'none', fontSize: '50px', fontWeight: '900' }}>+</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '50px' }}>
+              <button onClick={() => {if(scores[currentHole]>1){const n=[...scores]; n[currentHole]--; setScores(n);}}} style={{ width: '85px', height: '85px', borderRadius: '50%', backgroundColor: '#ef4444', color: 'white', border: 'none', fontSize: '60px', fontWeight: '900' }}>-</button>
+              <div style={{ textAlign: 'center' }}><div style={{ fontSize: '130px', fontWeight: '900', color: '#063020', lineHeight: '1' }}>{scores[currentHole] === 0 ? "X" : scores[currentHole]}</div><div style={{ fontSize: '14px', fontWeight: '800' }}>STROKES</div></div>
+              <button onClick={() => {const n=[...scores]; if(n[currentHole]===0) n[currentHole]=courseData[currentHole].par; else n[currentHole]++; setScores(n);}} style={{ width: '85px', height: '85px', borderRadius: '50%', backgroundColor: '#2d9a83', color: 'white', border: 'none', fontSize: '60px', fontWeight: '900' }}>+</button>
             </div>
-            <button onClick={() => {const n=[...scores]; n[currentHole]=0; setScores(n);}} style={{ marginTop: '30px', padding: '12px 40px', background: '#4b5563', color: 'white', borderRadius: '10px', fontWeight: '900' }}>PICK UP (X)</button>
+            <button onClick={() => {const n=[...scores]; n[currentHole]=0; setScores(n);}} style={{ marginTop: '30px', padding: '15px 50px', background: '#4b5563', color: 'white', borderRadius: '15px', fontWeight: '900', fontSize: '20px' }}>PICK UP (X)</button>
           </div>
           <div style={{ display: 'flex', padding: '15px', gap: '10px', background: '#063020' }}>
-            <button onClick={() => currentHole > 0 && setCurrentHole(currentHole - 1)} style={{ flex: 1, padding: '18px', borderRadius: '10px', background: '#E9ECEF', fontWeight: '900' }}>PREV</button>
-            <button onClick={() => currentHole < 17 ? setCurrentHole(currentHole+1) : setShowSummary(true)} style={{ flex: 2, padding: '18px', borderRadius: '10px', background: '#C9A66B', color: 'white', fontWeight: '900' }}>{currentHole < 17 ? 'NEXT' : 'SUMMARY'}</button>
+            <button onClick={() => currentHole > 0 && setCurrentHole(currentHole - 1)} style={{ flex: 1, padding: '20px', borderRadius: '12px', background: '#E9ECEF', fontWeight: '900' }}>PREV</button>
+            <button onClick={() => currentHole < 17 ? setCurrentHole(currentHole+1) : setShowSummary(true)} style={{ flex: 2, padding: '20px', borderRadius: '12px', background: '#C9A66B', color: 'white', fontWeight: '900' }}>{currentHole < 17 ? 'NEXT' : 'SUMMARY'}</button>
           </div>
         </div>
       ) : (
         <div style={{ padding: '10px', overflowY: 'auto', flex: 1 }}>
           <div style={{ background: '#063020', color: 'white', padding: '15px', borderRadius: '10px', textAlign: 'center', marginBottom: '10px' }}>
-            <h2 style={{ margin: 0 }}>{finalScore} POINTS</h2>
-            {player.deduction > 0 && <small>Incl. {player.deduction} pt deduction</small>}
+            <h2 style={{ margin: 0, fontSize: '26px' }}>{finalScore} POINTS</h2>
+            <div style={{ fontSize: '14px', marginTop: '5px' }}>
+                Total: {rawTotal} | Deduction: {player.deduction || 0}
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-            <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '8px' }}><ScoreTable start={0} /></div>
-            <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '8px' }}><ScoreTable start={9} /></div>
+          <div style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
+            <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '8px' }}>
+                <ScoreTable start={0} />
+                <div style={{ background: '#f8f9fa', textAlign: 'center', padding: '8px', fontWeight: '900', borderTop: '1px solid #ddd' }}>OUT: {f9Pts}</div>
+            </div>
+            <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '8px' }}>
+                <ScoreTable start={9} />
+                <div style={{ background: '#f8f9fa', textAlign: 'center', padding: '8px', fontWeight: '900', borderTop: '1px solid #ddd' }}>IN: {b9Pts}</div>
+            </div>
           </div>
           {!isLocked ? (
             <>
-              <select value={verifierName} onChange={(e) => setVerifierName(e.target.value)} style={{ width: '100%', padding: '15px', borderRadius: '10px', marginBottom: '10px', fontSize: '16px' }}>
-                <option value="">-- ATTESTER --</option>
+              <select value={verifierName} onChange={(e) => setVerifierName(e.target.value)} style={{ width: '100%', padding: '15px', borderRadius: '10px', margin: '10px 0', fontSize: '18px', fontWeight: 'bold' }}>
+                <option value="">-- SELECT ATTESTER --</option>
                 {allPlayers.filter(p => p.name !== player.name).map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
               </select>
               <button onClick={async () => {
                 if(!verifierName) return alert("Select Attester");
-                const { error } = await supabase.from('rounds').insert([{ player_name: player.name, handicap: player.handicap, total_points: finalScore, verifier: verifierName, scores: scores, f9: f9Pts, b9: (finalScore-f9Pts) }]);
-                if(!error){ alert("Success!"); handleLogout(); }
-              }} style={{ width: '100%', padding: '20px', background: '#10b981', color: 'white', borderRadius: '10px', fontWeight: '900', fontSize: '18px' }}>SUBMIT SCORECARD</button>
-              <button onClick={() => setShowSummary(false)} style={{ width: '100%', marginTop: '10px', padding: '10px', background: 'none', border: 'none', color: '#666' }}>Back to Edit</button>
+                const { error } = await supabase.from('rounds').insert([{ player_name: player.name, handicap: player.handicap, total_points: finalScore, verifier: verifierName, scores: scores, f9: f9Pts, b9: b9Pts }]);
+                if(!error){ alert("Scorecard Submitted!"); handleLogout(); } else { alert(error.message); }
+              }} style={{ width: '100%', padding: '22px', background: '#10b981', color: 'white', borderRadius: '10px', fontWeight: '900', fontSize: '20px' }}>SUBMIT SCORECARD</button>
+              <button onClick={() => setShowSummary(false)} style={{ width: '100%', marginTop: '12px', padding: '10px', background: 'none', border: 'none', color: '#C9A66B', fontWeight: '900', fontSize: '18px' }}>EDIT SCORES</button>
             </>
-          ) : <button onClick={handleLogout} style={{ width: '100%', padding: '20px', background: '#063020', color: 'white', borderRadius: '10px', fontWeight: '900' }}>LOGOUT</button>}
+          ) : <button onClick={handleLogout} style={{ width: '100%', padding: '20px', background: '#063020', color: 'white', borderRadius: '10px', fontWeight: '900' }}>LOG OUT</button>}
         </div>
       )}
     </div>
