@@ -39,8 +39,9 @@ export default function App() {
   const handleLogin = async () => {
     const { data } = await supabase.from('users').select('*').eq('access_code', loginCode).single();
     if (data) { 
-      // Assuming 'deduction' is a column in your Supabase 'users' table
-      setPlayer({ name: data.name, handicap: data.handicap, deduction: data.deduction || 0 }); 
+      // Safety check: if deduction is null/undefined in DB, set to 0
+      const userDeduction = data.deduction ?? 0; 
+      setPlayer({ name: data.name, handicap: data.handicap, deduction: userDeduction }); 
       setIsLoggedIn(true); 
     } 
     else { alert("Invalid Code."); }
@@ -54,7 +55,10 @@ export default function App() {
 
   const f9Points = scores.slice(0, 9).reduce((acc, s, i) => acc + calcPoints(s, courseData[i].par, courseData[i].si), 0);
   const b9Points = scores.slice(9, 18).reduce((acc, s, i) => acc + calcPoints(s, courseData[i + 9].par, courseData[i + 9].si), 0);
-  const finalScore = (f9Points + b9Points) - player.deduction;
+  
+  // Ensure we are working with numbers for the final calculation
+  const safeDeduction = Number(player.deduction) || 0;
+  const finalScore = (f9Points + b9Points) - safeDeduction;
 
   const handleSubmitScore = async () => {
     if (!verifierName) return alert("Please select an Attester.");
@@ -67,7 +71,7 @@ export default function App() {
       date: new Date().toISOString()
     }]);
     if (!error) { alert("Score Submitted!"); handleLogout(); }
-    else { alert("Error submitting."); }
+    else { alert("Submission Error: " + error.message); }
   };
 
   const ScoreTable = ({ startIndex }) => (
@@ -82,7 +86,7 @@ export default function App() {
           const idx = startIndex + i;
           return (
             <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
-              <td style={{ fontWeight: '800', padding: '2px 0', background: '#f8f9fa', fontSize: '14px' }}>{idx + 1}</td>
+              <td style={{ fontWeight: '800', padding: '1px 0', background: '#f8f9fa', fontSize: '13px' }}>{idx + 1}</td>
               <td style={{ fontWeight: '900', fontSize: '18px' }}>{scores[idx] === 0 ? 'X' : scores[idx]}</td>
               <td style={{ fontWeight: '900', color: '#10b981', fontSize: '18px' }}>{calcPoints(scores[idx], h.par, h.si)}</td>
             </tr>
@@ -92,21 +96,11 @@ export default function App() {
     </table>
   );
 
-  if (!isLoggedIn) {
-    return (
-      <div style={{ backgroundColor: '#063020', height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '30px' }}>
-        <h1 style={{ color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '45px' }}>LOGIN</h1>
-        <input type="text" value={loginCode} onChange={e => setLoginCode(e.target.value)} placeholder="000" style={{ padding: '20px', fontSize: '30px', textAlign: 'center', borderRadius: '15px', marginBottom: '15px', border: 'none' }} />
-        <button onClick={handleLogin} style={{ padding: '20px', backgroundColor: '#C9A66B', color: 'white', border: 'none', borderRadius: '15px', fontWeight: '900', fontSize: '24px' }}>ENTER</button>
-      </div>
-    );
-  }
-
   return (
     <div style={{ backgroundColor: '#ffffff', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'sans-serif' }}>
       {!showSummary ? (
         <div style={{ width: '100%', maxWidth: '450px', margin: '0 auto', display: 'flex', flexDirection: 'column', height: '100%' }}>
-          {/* Main Scorer View Header, Stats, and Controls remain as previously designed */}
+          {/* SCORER INTERFACE (PREVIOUSLY OPTIMIZED) */}
           <div style={{ padding: '10px 5px', backgroundColor: '#063020', color: 'white', textAlign: 'center' }}>
             <div style={{ fontSize: '34px', fontWeight: '900', lineHeight: '1.1' }}>{player.name.toUpperCase()}</div>
             <div style={{ fontSize: '24px', fontWeight: '800', color: '#C9A66B' }}>HCAP: {player.handicap}</div>
@@ -115,7 +109,7 @@ export default function App() {
           <div style={{ display: 'flex', backgroundColor: '#F1F3F5', borderBottom: '2px solid #DEE2E6', alignItems: 'center' }}>
               <div style={{ flex: 1.2, textAlign: 'center', padding: '4px 0', borderRight: '2px solid #DEE2E6', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <div style={{ color: '#000', fontWeight: '900', fontSize: '18px' }}>HOLE</div>
-                  <div style={{ backgroundColor: '#FFD700', color: '#000', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '45px', fontWeight: '900', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', margin: '2px 0' }}>{currentHole + 1}</div>
+                  <div style={{ backgroundColor: '#FFD700', color: '#000', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '45px', fontWeight: '900', margin: '2px 0' }}>{currentHole + 1}</div>
               </div>
               <div style={{ flex: 1, textAlign: 'center', padding: '4px 0', borderRight: '2px solid #DEE2E6' }}>
                   <div style={{ color: '#000', fontWeight: '900', fontSize: '18px' }}>PAR</div>
@@ -162,15 +156,15 @@ export default function App() {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', padding: '2px' }}>
           
           <div style={{ display: 'flex', gap: '4px' }}>
-              <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '4px' }}>
-                  <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '14px', padding: '4px' }}>FRONT 9</div>
+              <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '6px' }}>
+                  <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '18px', padding: '6px' }}>FRONT 9</div>
                   <ScoreTable startIndex={0} />
-                  <div style={{ padding: '8px 0', textAlign: 'center', background: '#f1f3f5', fontSize: '24px', fontWeight: '900', color: '#063020' }}>{f9Points} PTS</div>
+                  <div style={{ padding: '10px 0', textAlign: 'center', background: '#f1f3f5', fontSize: '30px', fontWeight: '900', color: '#063020', borderTop: '1px solid #ddd' }}>{f9Points} <span style={{fontSize: '14px'}}>PTS</span></div>
               </div>
-              <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '4px' }}>
-                  <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '14px', padding: '4px' }}>BACK 9</div>
+              <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: '6px' }}>
+                  <div style={{ background: '#063020', color: 'white', textAlign: 'center', fontWeight: '900', fontSize: '18px', padding: '6px' }}>BACK 9</div>
                   <ScoreTable startIndex={9} />
-                  <div style={{ padding: '8px 0', textAlign: 'center', background: '#f1f3f5', fontSize: '24px', fontWeight: '900', color: '#063020' }}>{b9Points} PTS</div>
+                  <div style={{ padding: '10px 0', textAlign: 'center', background: '#f1f3f5', fontSize: '30px', fontWeight: '900', color: '#063020', borderTop: '1px solid #ddd' }}>{b9Points} <span style={{fontSize: '14px'}}>PTS</span></div>
               </div>
           </div>
 
@@ -182,19 +176,19 @@ export default function App() {
                   {allPlayers.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
                 </select>
               </div>
-              <div style={{ textAlign: 'center', padding: '0 10px' }}>
-                <div style={{ fontSize: '12px', fontWeight: '900', color: '#e63946' }}>DEDUCTION</div>
-                <div style={{ fontSize: '28px', fontWeight: '900', color: '#e63946' }}>-{player.deduction}</div>
+              <div style={{ textAlign: 'center', padding: '0 10px', backgroundColor: '#fff5f5', borderRadius: '8px', border: '1px solid #feb2b2' }}>
+                <div style={{ fontSize: '11px', fontWeight: '900', color: '#c53030' }}>DEDUCTION</div>
+                <div style={{ fontSize: '28px', fontWeight: '900', color: '#c53030' }}>-{safeDeduction}</div>
               </div>
           </div>
 
-          <div style={{ textAlign: 'center', background: '#d1fae5', padding: '8px', borderTop: '2px solid #10b981' }}>
-             <span style={{ fontSize: '38px', fontWeight: '900', color: '#064e3b' }}>FINAL: {finalScore} PTS</span>
+          <div style={{ textAlign: 'center', background: '#d1fae5', padding: '10px', borderTop: '3px solid #10b981' }}>
+             <span style={{ fontSize: '42px', fontWeight: '900', color: '#064e3b' }}>FINAL: {finalScore} PTS</span>
           </div>
 
           <div style={{ display: 'flex', gap: '5px', padding: '5px' }}>
-            <button onClick={() => setShowSummary(false)} style={{ flex: 1, padding: '15px', borderRadius: '10px', border: 'none', background: '#E9ECEF', fontWeight: '900' }}>EDIT</button>
-            <button onClick={handleSubmitScore} style={{ flex: 2, padding: '15px', borderRadius: '10px', border: 'none', background: '#10b981', color: 'white', fontWeight: '900', fontSize: '20px' }}>SUBMIT CARD</button>
+            <button onClick={() => setShowSummary(false)} style={{ flex: 1, padding: '18px', borderRadius: '10px', border: 'none', background: '#E9ECEF', fontWeight: '900' }}>EDIT</button>
+            <button onClick={handleSubmitScore} style={{ flex: 2, padding: '18px', borderRadius: '10px', border: 'none', background: '#10b981', color: 'white', fontWeight: '900', fontSize: '22px' }}>SUBMIT CARD</button>
           </div>
         </div>
       )}
