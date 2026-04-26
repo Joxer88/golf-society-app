@@ -17,16 +17,24 @@ export default function App() {
   const [currentHole, setCurrentHole] = useState(() => parseInt(localStorage.getItem('egs_currentHole')) || 0);
   const [scores, setScores] = useState(() => JSON.parse(localStorage.getItem('egs_scores')) || courseData.map(h => h.par));
   const [loginCode, setLoginCode] = useState("");
+  const [allPlayers, setAllPlayers] = useState([]);
+  const [verifierName, setVerifierName] = useState("");
   const [showSummary, setShowSummary] = useState(false);
 
   const handleLogout = useCallback(() => { localStorage.clear(); window.location.reload(); }, []);
+
+  const loadSocietyData = useCallback(async () => {
+    const { data: users } = await supabase.from('users').select('name').neq('name', player.name);
+    setAllPlayers(users || []);
+  }, [player.name]);
 
   useEffect(() => {
     localStorage.setItem('egs_isLoggedIn', isLoggedIn);
     localStorage.setItem('egs_player', JSON.stringify(player));
     localStorage.setItem('egs_currentHole', currentHole);
     localStorage.setItem('egs_scores', JSON.stringify(scores));
-  }, [isLoggedIn, player, currentHole, scores]);
+    if (isLoggedIn) loadSocietyData();
+  }, [isLoggedIn, player, currentHole, scores, loadSocietyData]);
 
   const handleLogin = async () => {
     const { data } = await supabase.from('users').select('*').eq('access_code', loginCode).single();
@@ -41,6 +49,20 @@ export default function App() {
   };
 
   const totalPoints = scores.reduce((acc, s, i) => acc + calcPoints(s, courseData[i].par, courseData[i].si), 0);
+
+  const handleSubmitScore = async () => {
+    if (!verifierName) return alert("Please select an Attester/Verifier.");
+    const { error } = await supabase.from('rounds').insert([{
+      player_name: player.name,
+      handicap: player.handicap,
+      scores: scores,
+      total_points: totalPoints,
+      verifier: verifierName,
+      date: new Date().toISOString()
+    }]);
+    if (!error) { alert("Score Submitted!"); handleLogout(); }
+    else { alert("Error submitting score."); }
+  };
 
   if (!isLoggedIn) {
     return (
@@ -65,7 +87,7 @@ export default function App() {
           <div style={{ display: 'flex', backgroundColor: '#F1F3F5', borderBottom: '2px solid #DEE2E6', alignItems: 'center' }}>
               <div style={{ flex: 1.2, textAlign: 'center', padding: '4px 0', borderRight: '2px solid #DEE2E6', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <div style={{ color: '#000', fontWeight: '900', fontSize: '18px' }}>HOLE</div>
-                  <div style={{ backgroundColor: '#FFD700', color: '#000', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyCenter: 'center', fontSize: '45px', fontWeight: '900', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', margin: '2px 0' }}>
+                  <div style={{ backgroundColor: '#FFD700', color: '#000', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '45px', fontWeight: '900', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', margin: '2px 0' }}>
                     {currentHole + 1}
                   </div>
               </div>
@@ -93,7 +115,6 @@ export default function App() {
              </div>
           </div>
 
-          {/* FOOTER WITH LIGHT GREEN POINTS HIGHLIGHT */}
           <div style={{ borderTop: '3px solid #F1F3F5', padding: '5px 15px' }}>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                 <div style={{ flex: 1, textAlign: 'center', padding: '5px', backgroundColor: '#d1fae5', borderRadius: '12px', border: '2px solid #10b981' }}>
@@ -111,13 +132,51 @@ export default function App() {
                 <button onClick={() => currentHole < 17 ? setCurrentHole(currentHole+1) : setShowSummary(true)} style={{ flex: 2, padding: '20px', borderRadius: '15px', background: '#063020', color: 'white', border: 'none', fontWeight: '900', fontSize: '24px' }}>NEXT</button>
             </div>
           </div>
-
         </div>
       ) : (
-        <div style={{ padding: '40px 20px', textAlign: 'center', height: '100vh' }}>
-          <h2 style={{ fontSize: '45px', fontWeight: '900', color: '#063020' }}>FINISHED</h2>
-          <div style={{ fontSize: '140px', fontWeight: '900', color: '#C9A66B' }}>{totalPoints}</div>
-          <button onClick={handleLogout} style={{ padding: '25px 50px', backgroundColor: '#063020', color: 'white', borderRadius: '15px', border: 'none', fontWeight: '900', fontSize: '24px' }}>SUBMIT</button>
+        <div style={{ flex: 1, overflowY: 'auto', backgroundColor: '#F8F9FA', padding: '15px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+             <h2 style={{ fontSize: '30px', fontWeight: '900', color: '#063020', margin: '0' }}>ROUND SUMMARY</h2>
+             <div style={{ fontSize: '60px', fontWeight: '900', color: '#10b981' }}>{totalPoints} PTS</div>
+          </div>
+
+          <div style={{ backgroundColor: 'white', borderRadius: '15px', padding: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
+             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '14px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #063020' }}>
+                    <th>HOLE</th><th>PAR</th><th>SI</th><th>SCR</th><th>PTS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {courseData.map((h, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid #eee', backgroundColor: i === currentHole ? '#fff9db' : 'transparent' }}>
+                      <td style={{ fontWeight: 'bold', padding: '5px' }}>{i+1}</td>
+                      <td>{h.par}</td>
+                      <td>{h.si}</td>
+                      <td style={{ fontWeight: '900' }}>{scores[i] === 0 ? 'X' : scores[i]}</td>
+                      <td style={{ fontWeight: '900', color: '#10b981' }}>{calcPoints(scores[i], h.par, h.si)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+             </table>
+          </div>
+
+          <div style={{ padding: '20px', backgroundColor: 'white', borderRadius: '15px', marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontWeight: '900', marginBottom: '10px', fontSize: '18px' }}>ATTESTER / VERIFIER:</label>
+            <select 
+              value={verifierName} 
+              onChange={(e) => setVerifierName(e.target.value)} 
+              style={{ width: '100%', padding: '15px', borderRadius: '10px', fontSize: '18px', border: '2px solid #063020' }}
+            >
+              <option value="">-- SELECT PLAYER --</option>
+              {allPlayers.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', paddingBottom: '30px' }}>
+            <button onClick={() => setShowSummary(false)} style={{ flex: 1, padding: '20px', borderRadius: '12px', border: 'none', background: '#E9ECEF', fontWeight: '900' }}>EDIT SCORES</button>
+            <button onClick={handleSubmitScore} style={{ flex: 2, padding: '20px', borderRadius: '12px', border: 'none', background: '#10b981', color: 'white', fontWeight: '900', fontSize: '18px' }}>SUBMIT CARD</button>
+          </div>
         </div>
       )}
     </div>
